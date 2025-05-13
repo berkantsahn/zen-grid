@@ -226,9 +226,9 @@ export class AppComponent implements AfterViewInit, OnInit {
   
   toolbarOptions: ToolbarOptions = {
     visible: true,
-    search: false,
-    export: false,
-    language: 'en'
+    search: true,
+    export: true,
+    language: 'tr'
   };
   
   constructor(private zone: NgZone) {}

@@ -7,6 +7,7 @@
 // Çeviri anahtarlarını tanımla
 export enum TranslationKey {
   SEARCH_PLACEHOLDER = 'search_placeholder',
+  EXPORT = 'export',
   EXPORT_CSV = 'export_csv',
   EXPORT_JSON = 'export_json',
   EXPORT_PDF = 'export_pdf',
@@ -30,6 +31,7 @@ export interface LanguageMap {
 export const translations: LanguageMap = {
   'tr': {
     [TranslationKey.SEARCH_PLACEHOLDER]: 'Ara...',
+    [TranslationKey.EXPORT]: 'Dışa Aktar',
     [TranslationKey.EXPORT_CSV]: 'CSV Olarak Dışa Aktar',
     [TranslationKey.EXPORT_JSON]: 'JSON Olarak Dışa Aktar',
     [TranslationKey.EXPORT_PDF]: 'PDF Olarak Dışa Aktar',
@@ -40,6 +42,7 @@ export const translations: LanguageMap = {
   },
   'en': {
     [TranslationKey.SEARCH_PLACEHOLDER]: 'Search...',
+    [TranslationKey.EXPORT]: 'Export',
     [TranslationKey.EXPORT_CSV]: 'Export as CSV',
     [TranslationKey.EXPORT_JSON]: 'Export as JSON',
     [TranslationKey.EXPORT_PDF]: 'Export as PDF',

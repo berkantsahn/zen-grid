@@ -97,67 +97,93 @@ export class ZenGrid extends HTMLElement {
         display: block;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         color: #333;
+        --primary-color: #1976d2;
+        --primary-light: #e3f2fd;
+        --border-color: #e0e0e0;
+        --hover-color: #f5f5f5;
+        --selected-color: rgba(25, 118, 210, 0.1);
+        --header-bg: #fafafa;
+        --row-border: #f0f0f0;
+        --text-color: #424242;
       }
       
       .zen-grid-container {
         overflow: auto;
         width: 100%;
+        border-radius: 0 0 4px 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        position: relative;
       }
       
       .zen-grid-table {
         width: 100%;
         border-collapse: collapse;
         border-spacing: 0;
-        margin-bottom: 1rem;
+        margin-bottom: 0;
+        color: var(--text-color);
+        font-size: 0.9rem;
       }
       
       .zen-grid-table.bordered {
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
       }
       
       .zen-grid-table th,
       .zen-grid-table td {
-        padding: 0.75rem;
-        vertical-align: top;
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
         text-align: left;
-        border-top: 1px solid #ddd;
+        border-top: 1px solid var(--row-border);
+        transition: background-color 0.15s ease-in-out;
       }
       
       .zen-grid-table.bordered th,
       .zen-grid-table.bordered td {
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
       }
       
       .zen-grid-table thead th {
+        position: sticky;
+        top: 0;
         vertical-align: bottom;
-        border-bottom: 2px solid #ddd;
+        border-bottom: 2px solid var(--border-color);
         font-weight: 600;
-        background-color: #f8f9fa;
+        background-color: var(--header-bg);
         cursor: pointer;
         user-select: none;
+        z-index: 1;
+        white-space: nowrap;
+        padding-right: 1.5rem; /* Space for sort icon */
+      }
+      
+      .zen-grid-table thead th:hover {
+        background-color: #f0f0f0;
       }
       
       .zen-grid-table.striped tbody tr:nth-of-type(odd) {
-        background-color: rgba(0, 0, 0, 0.05);
+        background-color: rgba(0, 0, 0, 0.02);
       }
       
       .zen-grid-table tbody tr:hover {
-        background-color: rgba(0, 0, 0, 0.075);
+        background-color: var(--hover-color);
       }
       
       .zen-grid-table tbody tr.selected {
-        background-color: rgba(0, 123, 255, 0.2);
+        background-color: var(--selected-color);
       }
       
       .zen-grid-pagination {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.5rem 0;
+        padding: 0.75rem 1rem;
+        background-color: var(--header-bg);
+        border-top: 1px solid var(--border-color);
+        font-size: 0.85rem;
       }
       
       .zen-grid-pagination-info {
-        font-size: 0.875rem;
+        color: #757575;
       }
       
       .zen-grid-pagination-buttons {
@@ -166,36 +192,43 @@ export class ZenGrid extends HTMLElement {
       }
       
       .zen-grid-pagination-button {
-        background-color: transparent;
-        border: 1px solid #ddd;
-        padding: 0.25rem 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        padding: 0.35rem 0.6rem;
         cursor: pointer;
-        font-size: 0.875rem;
+        font-size: 0.85rem;
         min-width: 2rem;
         text-align: center;
+        border-radius: 3px;
+        transition: all 0.2s ease;
       }
       
       .zen-grid-pagination-button:hover {
-        background-color: #f0f0f0;
+        background-color: var(--hover-color);
+        border-color: #ccc;
       }
       
       .zen-grid-pagination-button.active {
-        background-color: #007bff;
-        border-color: #007bff;
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
         color: white;
       }
       
       .zen-grid-pagination-button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        background-color: #f5f5f5;
       }
       
       .zen-grid-sort-icon {
-        display: inline-block;
-        margin-left: 0.25rem;
+        position: absolute;
+        margin-left: 0.35rem;
         width: 0;
         height: 0;
         vertical-align: middle;
+        right: 0.5rem;
+        top: calc(50% - 3px);
+        color: #aaaaaa;
       }
       
       .zen-grid-sort-icon.asc {
@@ -211,10 +244,11 @@ export class ZenGrid extends HTMLElement {
       }
       
       .zen-grid-empty-message {
-        padding: 2rem;
+        padding: 3rem 1rem;
         text-align: center;
-        color: #777;
+        color: #757575;
         font-style: italic;
+        background-color: #fafafa;
       }
       
       @media (max-width: 768px) {
@@ -224,21 +258,30 @@ export class ZenGrid extends HTMLElement {
         
         .zen-grid-table.responsive tbody tr {
           display: block;
-          margin-bottom: 1rem;
-          border: 1px solid #ddd;
+          margin-bottom: 0.75rem;
+          border: 1px solid var(--border-color);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          border-radius: 4px;
         }
         
         .zen-grid-table.responsive tbody td {
           display: block;
           text-align: right;
-          padding: 0.5rem;
+          padding: 0.5rem 0.75rem;
           border-top: none;
+          border-bottom: 1px solid var(--row-border);
+        }
+        
+        .zen-grid-table.responsive tbody td:last-child {
+          border-bottom: none;
         }
         
         .zen-grid-table.responsive tbody td::before {
           content: attr(data-label);
           float: left;
           font-weight: bold;
+          margin-right: 1rem;
+          color: #666;
         }
       }
     `;

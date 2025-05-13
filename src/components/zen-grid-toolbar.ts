@@ -78,17 +78,22 @@ export class ZenGridToolbar extends HTMLElement {
         display: block;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         color: #333;
+        --primary-color: #1976d2;
+        --primary-light: #e3f2fd;
+        --border-color: #e0e0e0;
+        --hover-color: #f5f5f5;
       }
       
       .zen-grid-toolbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 16px;
-        background-color: #f8f9fa;
-        border: 1px solid #ddd;
+        padding: 12px 16px;
+        background-color: #fafafa;
+        border: 1px solid var(--border-color);
         border-radius: 4px 4px 0 0;
         margin-bottom: -1px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       }
       
       .zen-grid-toolbar-section {
@@ -110,37 +115,38 @@ export class ZenGridToolbar extends HTMLElement {
       .zen-grid-toolbar-section.right {
         justify-content: flex-end;
         flex: 1;
+        gap: 10px;
       }
       
       /* Düğme stillemesi */
       .zen-grid-toolbar-button {
         background-color: #fff;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
         border-radius: 4px;
         padding: 6px 12px;
-        margin-right: 8px;
         cursor: pointer;
         font-size: 14px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
+        color: #555;
       }
       
       .zen-grid-toolbar-button:hover {
-        background-color: #f1f1f1;
+        background-color: var(--hover-color);
         border-color: #c9c9c9;
       }
       
-      .zen-grid-toolbar-button:last-child {
-        margin-right: 0;
+      .zen-grid-toolbar-button:active {
+        background-color: #e9e9e9;
       }
       
-      .zen-grid-toolbar-button .icon {
-        margin-right: 4px;
-        width: 16px;
-        height: 16px;
-        display: inline-block;
+      .zen-grid-toolbar-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #555;
       }
       
       /* Arama kutusu */
@@ -150,18 +156,19 @@ export class ZenGridToolbar extends HTMLElement {
       }
       
       .zen-grid-search-input {
-        padding: 6px 12px;
+        padding: 8px 12px;
         padding-left: 32px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--border-color);
         border-radius: 4px;
         font-size: 14px;
         width: 200px;
         outline: none;
+        transition: all 0.2s ease;
       }
       
       .zen-grid-search-input:focus {
-        border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(25, 118, 210, 0.15);
       }
       
       .zen-grid-search-icon {
@@ -169,7 +176,83 @@ export class ZenGridToolbar extends HTMLElement {
         left: 10px;
         top: 50%;
         transform: translateY(-50%);
-        color: #666;
+        color: #777;
+      }
+      
+      /* Export Dropdown */
+      .zen-grid-export-dropdown {
+        position: relative;
+        display: inline-block;
+      }
+      
+      .zen-grid-export-toggle {
+        background-color: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s ease;
+        color: #555;
+      }
+      
+      .zen-grid-export-toggle:hover {
+        background-color: var(--hover-color);
+      }
+      
+      .zen-grid-export-toggle-icon {
+        margin-left: 5px;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 6px solid currentColor;
+        display: inline-block;
+      }
+      
+      .zen-grid-export-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 150px;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        display: none;
+        margin-top: 4px;
+      }
+      
+      .zen-grid-export-menu.show {
+        display: block;
+      }
+      
+      .zen-grid-export-item {
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #555;
+      }
+      
+      .zen-grid-export-item:hover {
+        background-color: var(--hover-color);
+      }
+      
+      .zen-grid-export-item:first-child {
+        border-radius: 4px 4px 0 0;
+      }
+      
+      .zen-grid-export-item:last-child {
+        border-radius: 0 0 4px 4px;
+      }
+      
+      .zen-grid-export-item + .zen-grid-export-item {
+        border-top: 1px solid var(--border-color);
       }
     `;
     this.shadow.appendChild(style);
@@ -374,6 +457,48 @@ export class ZenGridToolbar extends HTMLElement {
     console.log('ZenGridToolbar: updateTranslations başladı, aktif dil:', this.translationService.getLanguage());
     
     try {
+      // Export dropdown metnini güncelle
+      const exportToggle = this.shadow.querySelector('.zen-grid-export-toggle');
+      if (exportToggle) {
+        const exportText = this.translationService.translate(TranslationKey.EXPORT);
+        const toggleIcon = exportToggle.querySelector('.zen-grid-export-toggle-icon');
+        
+        // İlk text node'u güncelle
+        if (exportToggle.firstChild && exportToggle.firstChild.nodeType === Node.TEXT_NODE) {
+          exportToggle.firstChild.nodeValue = exportText;
+        } else {
+          // Text node yoksa oluştur
+          exportToggle.insertBefore(document.createTextNode(exportText), toggleIcon || null);
+        }
+        
+        // Title özelliğini güncelle
+        exportToggle.setAttribute('title', exportText);
+      }
+      
+      // Export menü öğelerini güncelle
+      const exportItems = this.shadow.querySelectorAll('.zen-grid-export-item');
+      exportItems.forEach(item => {
+        const format = (item as HTMLElement).dataset.format;
+        if (format) {
+          let translationKey: TranslationKey | null = null;
+          
+          if (format === 'csv') {
+            translationKey = TranslationKey.EXPORT_CSV;
+          } else if (format === 'json') {
+            translationKey = TranslationKey.EXPORT_JSON;
+          } else if (format === 'pdf') {
+            translationKey = TranslationKey.EXPORT_PDF;
+          } else if (format === 'excel') {
+            translationKey = TranslationKey.EXPORT_EXCEL;
+          }
+          
+          if (translationKey) {
+            const title = this.translationService.translate(translationKey);
+            item.setAttribute('title', title);
+          }
+        }
+      });
+      
       // Arama placeholder'ını güncelle
       const searchInput = this.shadow.querySelector('.zen-grid-search-input') as HTMLInputElement;
       if (searchInput) {
@@ -393,33 +518,6 @@ export class ZenGridToolbar extends HTMLElement {
       } else {
         console.log('ZenGridToolbar: Başlık alanı bulunamadı');
       }
-      
-      // Buton başlıklarını güncelle
-      const buttons = this.shadow.querySelectorAll('.zen-grid-toolbar-button');
-      console.log('ZenGridToolbar: Güncellenecek buton sayısı:', buttons.length);
-      
-      buttons.forEach(button => {
-        const action = (button as HTMLElement).dataset.action;
-        if (action) {
-          let translationKey: TranslationKey | null = null;
-          
-          if (action === 'export-csv') {
-            translationKey = TranslationKey.EXPORT_CSV;
-          } else if (action === 'export-json') {
-            translationKey = TranslationKey.EXPORT_JSON;
-          } else if (action === 'export-pdf') {
-            translationKey = TranslationKey.EXPORT_PDF;
-          } else if (action === 'export-excel') {
-            translationKey = TranslationKey.EXPORT_EXCEL;
-          }
-          
-          if (translationKey) {
-            const buttonTitle = this.translationService.translate(translationKey);
-            console.log(`ZenGridToolbar: "${action}" butonu için başlık güncelleniyor:`, buttonTitle);
-            button.setAttribute('title', buttonTitle);
-          }
-        }
-      });
       
       console.log('ZenGridToolbar: Tüm çeviriler başarıyla güncellendi');
     } catch (err) {
@@ -454,89 +552,135 @@ export class ZenGridToolbar extends HTMLElement {
       }
     }
     
-    // Sol bölüm - Arama kutusu
-    const searchContainer = DomUtils.createElement('div', { class: 'zen-grid-search' });
-    if (!searchVisible) {
-      searchContainer.style.display = 'none';
-    }
-    
-    const searchIcon = DomUtils.createElement('span', { class: 'zen-grid-search-icon' }, ['🔍']);
-    const searchInput = DomUtils.createElement('input', {
-      class: 'zen-grid-search-input',
-      type: 'text',
-      placeholder: this.translationService.translate(TranslationKey.SEARCH_PLACEHOLDER)
-    });
-    
-    searchInput.addEventListener('input', (e) => {
-      console.log('ZenGridToolbar: Search input event tetiklendi');
-      
-      // Her zaman en güncel grid referansı ile çalış
-      if (!this.gridElement) {
-        this.gridElement = this.findZenGridElement();
-        console.log('ZenGridToolbar: Grid referansı bulundu mu:', !!this.gridElement);
-      }
-      
-      // Arama metnini al ve boşlukları kırp
-      const searchTerm = (e.target as HTMLInputElement).value;
-      console.log('ZenGridToolbar: Arama terimi:', searchTerm);
-      
-      // Filtreleme işlemi
-      this.performSearch(searchTerm);
-    });
-    
-    searchContainer.appendChild(searchIcon);
-    searchContainer.appendChild(searchInput);
-    this.leftSection.appendChild(searchContainer);
-    
-    // Orta bölüm - Tablo başlığı veya bilgi metni
+    // Orta bölüm - Tablo başlığı
     const title = DomUtils.createElement('h3', { class: 'zen-grid-toolbar-title' }, [
       this.translationService.translate(TranslationKey.TABLE_TITLE)
     ]);
     this.centerSection.appendChild(title);
     
-    // Sağ bölüm - Dışa aktarma butonları
-    const exportButtonsContainer = DomUtils.createElement('div', { class: 'zen-grid-export-buttons' });
-    if (!exportVisible) {
-      exportButtonsContainer.style.display = 'none';
+    // Sağ bölüm - Export dropdown ve arama kutusu
+    
+    // 1. Export Dropdown
+    if (exportVisible) {
+      const exportDropdown = DomUtils.createElement('div', { class: 'zen-grid-export-dropdown' });
+      
+      // Dropdown toggle butonu
+      const exportToggle = DomUtils.createElement('button', { 
+        class: 'zen-grid-export-toggle',
+        title: this.translationService.translate(TranslationKey.EXPORT)
+      }, [
+        this.translationService.translate(TranslationKey.EXPORT), 
+        DomUtils.createElement('span', { class: 'zen-grid-export-toggle-icon' })
+      ]);
+      
+      // Dropdown menü
+      const exportMenu = DomUtils.createElement('div', { class: 'zen-grid-export-menu' });
+      
+      // CSV seçeneği
+      const csvItem = DomUtils.createElement('div', { 
+        class: 'zen-grid-export-item',
+        'data-format': 'csv',
+        title: this.translationService.translate(TranslationKey.EXPORT_CSV)
+      }, ['CSV']);
+      csvItem.addEventListener('click', () => {
+        this.exportCSV();
+        exportMenu.classList.remove('show');
+      });
+      
+      // JSON seçeneği
+      const jsonItem = DomUtils.createElement('div', { 
+        class: 'zen-grid-export-item',
+        'data-format': 'json',
+        title: this.translationService.translate(TranslationKey.EXPORT_JSON)
+      }, ['JSON']);
+      jsonItem.addEventListener('click', () => {
+        this.exportJSON();
+        exportMenu.classList.remove('show');
+      });
+      
+      // PDF seçeneği
+      const pdfItem = DomUtils.createElement('div', { 
+        class: 'zen-grid-export-item',
+        'data-format': 'pdf',
+        title: this.translationService.translate(TranslationKey.EXPORT_PDF)
+      }, ['PDF']);
+      pdfItem.addEventListener('click', () => {
+        this.exportPDF();
+        exportMenu.classList.remove('show');
+      });
+      
+      // Excel seçeneği
+      const excelItem = DomUtils.createElement('div', { 
+        class: 'zen-grid-export-item',
+        'data-format': 'excel',
+        title: this.translationService.translate(TranslationKey.EXPORT_EXCEL)
+      }, ['Excel']);
+      excelItem.addEventListener('click', () => {
+        this.exportExcel();
+        exportMenu.classList.remove('show');
+      });
+      
+      // Export dropdown toggle olayını ekle
+      exportToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportMenu.classList.toggle('show');
+        
+        // Dropdown dışına tıklandığında menüyü kapat
+        const clickOutsideHandler = () => {
+          exportMenu.classList.remove('show');
+          document.removeEventListener('click', clickOutsideHandler);
+        };
+        
+        // Bir sonraki tıklamada dışarı tıklanırsa kapat
+        setTimeout(() => {
+          document.addEventListener('click', clickOutsideHandler);
+        }, 0);
+      });
+      
+      // Elementleri birleştir
+      exportMenu.appendChild(csvItem);
+      exportMenu.appendChild(jsonItem);
+      exportMenu.appendChild(pdfItem);
+      exportMenu.appendChild(excelItem);
+      
+      exportDropdown.appendChild(exportToggle);
+      exportDropdown.appendChild(exportMenu);
+      
+      this.rightSection.appendChild(exportDropdown);
     }
     
-    // CSV olarak dışa aktar
-    const csvButton = DomUtils.createElement('button', { 
-      class: 'zen-grid-toolbar-button',
-      'data-action': 'export-csv',
-      title: this.translationService.translate(TranslationKey.EXPORT_CSV)
-    }, ['CSV']);
-    csvButton.addEventListener('click', () => this.exportCSV());
-    
-    // JSON olarak dışa aktar
-    const jsonButton = DomUtils.createElement('button', { 
-      class: 'zen-grid-toolbar-button',
-      'data-action': 'export-json',
-      title: this.translationService.translate(TranslationKey.EXPORT_JSON)
-    }, ['JSON']);
-    jsonButton.addEventListener('click', () => this.exportJSON());
-    
-    // PDF olarak dışa aktar
-    const pdfButton = DomUtils.createElement('button', { 
-      class: 'zen-grid-toolbar-button',
-      'data-action': 'export-pdf',
-      title: this.translationService.translate(TranslationKey.EXPORT_PDF)
-    }, ['PDF']);
-    pdfButton.addEventListener('click', () => this.exportPDF());
-    
-    // Excel olarak dışa aktar
-    const excelButton = DomUtils.createElement('button', { 
-      class: 'zen-grid-toolbar-button',
-      'data-action': 'export-excel',
-      title: this.translationService.translate(TranslationKey.EXPORT_EXCEL)
-    }, ['Excel']);
-    excelButton.addEventListener('click', () => this.exportExcel());
-    
-    exportButtonsContainer.appendChild(csvButton);
-    exportButtonsContainer.appendChild(jsonButton);
-    exportButtonsContainer.appendChild(pdfButton);
-    exportButtonsContainer.appendChild(excelButton);
-    this.rightSection.appendChild(exportButtonsContainer);
+    // 2. Arama kutusu
+    if (searchVisible) {
+      const searchContainer = DomUtils.createElement('div', { class: 'zen-grid-search' });
+      
+      const searchIcon = DomUtils.createElement('span', { class: 'zen-grid-search-icon' }, ['🔍']);
+      const searchInput = DomUtils.createElement('input', {
+        class: 'zen-grid-search-input',
+        type: 'text',
+        placeholder: this.translationService.translate(TranslationKey.SEARCH_PLACEHOLDER)
+      });
+      
+      searchInput.addEventListener('input', (e) => {
+        console.log('ZenGridToolbar: Search input event tetiklendi');
+        
+        // Her zaman en güncel grid referansı ile çalış
+        if (!this.gridElement) {
+          this.gridElement = this.findZenGridElement();
+          console.log('ZenGridToolbar: Grid referansı bulundu mu:', !!this.gridElement);
+        }
+        
+        // Arama metnini al ve boşlukları kırp
+        const searchTerm = (e.target as HTMLInputElement).value;
+        console.log('ZenGridToolbar: Arama terimi:', searchTerm);
+        
+        // Filtreleme işlemi
+        this.performSearch(searchTerm);
+      });
+      
+      searchContainer.appendChild(searchIcon);
+      searchContainer.appendChild(searchInput);
+      this.rightSection.appendChild(searchContainer);
+    }
   }
   
   /**
