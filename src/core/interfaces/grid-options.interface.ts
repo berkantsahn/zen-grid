@@ -1,6 +1,7 @@
 import { IColumn } from './column.interface';
 import { IPaginationOptions } from './pagination-options.interface';
 import { ISortOptions } from './sort-options.interface';
+import { IToolbarOptions } from './toolbar-options.interface';
 
 /**
  * Zen-Grid için yapılandırma seçenekleri
@@ -12,11 +13,17 @@ export interface IGridOptions {
   /** Tabloda gösterilecek veri */
   data: any[];
   
+  /** Toolbar seçenekleri */
+  toolbarOptions?: IToolbarOptions;
+  
   /** Sıralama seçenekleri */
   sortOptions?: ISortOptions;
   
   /** Sayfalama seçenekleri */
   paginationOptions?: IPaginationOptions;
+  
+  /** Dil seçeneği (tr, en) */
+  language?: string;
   
   /** Tablo yüksekliği */
   height?: string;

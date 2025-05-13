@@ -1,6 +1,7 @@
-import { GridOptions, Column, PaginationOptions, SortOptions } from '../core/models';
-import { IColumn, ISortOptions, IPaginationOptions, SortDirection } from '../core/interfaces';
-import { DomUtils, DataUtils } from '../core/utils';
+import { GridOptions, Column, PaginationOptions, SortOptions, ToolbarOptions } from '../core/models';
+import { IColumn, ISortOptions, IPaginationOptions, IToolbarOptions, SortDirection } from '../core/interfaces';
+import { DomUtils, DataUtils, TranslationService, TranslationKey } from '../core/utils';
+import { ZenGridToolbar } from './zen-grid-toolbar';
 
 /**
  * ZenGrid web bileşeni
@@ -16,16 +17,24 @@ export class ZenGrid extends HTMLElement {
   private tableBody!: HTMLTableSectionElement;
   private paginationContainer!: HTMLDivElement;
   
+  // Toolbar referansı
+  private toolbarElement: HTMLElement | null = null;
+  
   // Veri ve yapılandırma
   private _options!: GridOptions;
   private _filteredData: any[] = [];
   private _selectedRows: any[] = [];
+  
+  // Dil servis referansı
+  private translationService: TranslationService = TranslationService.getInstance();
   
   /**
    * Yapıcı metod
    */
   constructor() {
     super();
+    
+    console.log('ZenGrid: constructor çağrıldı');
     
     // Shadow DOM oluştur
     this.shadow = this.attachShadow({ mode: 'open' });
@@ -38,7 +47,12 @@ export class ZenGrid extends HTMLElement {
       bordered: true,
       responsive: true,
       showHeader: true,
-      emptyMessage: 'Görüntülenecek veri yok'
+      emptyMessage: 'Görüntülenecek veri yok',
+      toolbarOptions: {
+        visible: true,
+        search: true,
+        export: true
+      }
     });
     
     // Temel yapıyı oluştur
@@ -237,14 +251,159 @@ export class ZenGrid extends HTMLElement {
    * Bileşen DOM'a eklendiğinde çağrılır
    */
   connectedCallback() {
+    // Log ekle
+    console.log('ZenGrid: connectedCallback çağrıldı');
+    
+    // Özellik gözlemcilerini ayarla
+    this.setupPropertyObservers();
+    
+    // MutationObserver oluştur, propertychange eventlerini dinle
+    this.setupPropertyChangeObserver();
+    
+    // Toolbar entegrasyonu
+    this.setupToolbarIntegration();
+    
+    // Eğer toolbarElement hala yoksa ve toolbarOptions varsa veya yoksa
+    if (!this.toolbarElement) {
+      console.log('ZenGrid: Toolbar elementi bulunamadı, yenisi oluşturuluyor');
+      
+      // Eğer toolbarOptions yoksa, varsayılan değerleri oluştur
+      if (!this._options.toolbarOptions) {
+        console.log('ZenGrid: Toolbar seçenekleri bulunamadı, varsayılan değerler ayarlanıyor');
+        this._options.toolbarOptions = new ToolbarOptions({
+          visible: true,
+          search: true,
+          export: true
+        });
+      }
+      
+      // Toolbar oluştur ve DOM'a ekle
+      this.toolbarElement = document.createElement('zen-grid-toolbar') as HTMLElement;
+      this.parentNode?.insertBefore(this.toolbarElement, this);
+      console.log('ZenGrid: Yeni toolbar elementi oluşturuldu ve DOM\'a eklendi');
+    }
+    
+    // Toolbar'ı güncelle
+    this.updateToolbar();
+    
+    // Render
     this.render();
+  }
+  
+  /**
+   * Dışarıdan obje olarak verilebilen özellikler için otomatik dönüşüm
+   */
+  private setupPropertyObservers() {
+    // JS ve HTML özellikleri arasında otomatik dönüşüm için event listener
+    
+    // Angular, React, Vue gibi frameworklerden direkt olarak
+    // property setting için bir dinleyici
+    this.addEventListener('propertyChange', (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { property, value } = customEvent.detail;
+      
+      // Özellik adına göre işlemi yönlendir
+      switch (property) {
+        case 'toolbarOptions':
+          this.setToolbarOptions(value);
+          break;
+          
+        case 'paginationOptions':
+          this.setPaginationOptions(value);
+          break;
+          
+        case 'sortOptions':
+          this.setSortOptions(value);
+          break;
+      }
+    });
+  }
+  
+  /**
+   * ToolbarOptions için özel setter
+   */
+  private setToolbarOptions(value: any): void {
+    // String olarak alınabilir (HTML attribute olarak geldiğinde)
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        console.error('Geçersiz toolbar options string formatı:', e);
+        return;
+      }
+    }
+    
+    // Nesne olarak ayarla
+    this.toolbarOptions = value;
+  }
+  
+  /**
+   * PaginationOptions için özel setter
+   */
+  private setPaginationOptions(value: any): void {
+    // String olarak alınabilir (HTML attribute olarak geldiğinde)
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        console.error('Geçersiz pagination options string formatı:', e);
+        return;
+      }
+    }
+    
+    // Nesne olarak ayarla
+    this.paginationOptions = value;
+  }
+  
+  /**
+   * SortOptions için özel setter
+   */
+  private setSortOptions(value: any): void {
+    // String olarak alınabilir (HTML attribute olarak geldiğinde)
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch (e) {
+        console.error('Geçersiz sort options string formatı:', e);
+        return;
+      }
+    }
+    
+    // Nesne olarak ayarla
+    this.sortOptions = value;
+  }
+  
+  /**
+   * Toolbar entegrasyonu
+   */
+  private setupToolbarIntegration(): void {
+    // Bir önceki kardeş elementi kontrol et (zen-grid-toolbar mu?)
+    const previousSibling = this.previousElementSibling;
+    if (previousSibling && previousSibling.tagName.toLowerCase() === 'zen-grid-toolbar') {
+      this.toolbarElement = previousSibling as HTMLElement;
+      console.log('ZenGrid: Toolbar bileşeni bulundu ve otomatik olarak entegre edildi.');
+    }
+  }
+  
+  /**
+   * Toolbar'ı ayarlar
+   */
+  set toolbar(element: HTMLElement | null) {
+    this.toolbarElement = element;
+  }
+  
+  /**
+   * Toolbar elementini döndürür
+   */
+  get toolbar(): HTMLElement | null {
+    return this.toolbarElement;
   }
   
   /**
    * İzlenen özellikleri tanımlar
    */
   static get observedAttributes() {
-    return ['columns', 'data', 'height', 'striped', 'bordered', 'responsive'];
+    return ['columns', 'data', 'height', 'striped', 'bordered', 'responsive', 'toolbar-options', 'language'];
   }
   
   /**
@@ -253,32 +412,72 @@ export class ZenGrid extends HTMLElement {
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     if (oldValue === newValue) return;
     
+    console.log(`ZenGrid: attributeChangedCallback - ${name} değişti:`, newValue);
+    
     switch (name) {
       case 'columns':
-        try {
-          this.columns = JSON.parse(newValue);
-        } catch (e) {
-          console.error('Geçersiz sütun formatı:', e);
-        }
-        break;
       case 'data':
         try {
-          this.data = JSON.parse(newValue);
+          const parsedValue = JSON.parse(newValue);
+          if (name === 'columns') {
+            this.columns = parsedValue;
+          } else {
+            this.data = parsedValue;
+          }
         } catch (e) {
-          console.error('Geçersiz veri formatı:', e);
+          console.error(`Geçersiz ${name} formatı:`, e);
         }
         break;
+        
+      case 'toolbar-options':
+        try {
+          const parsedValue = JSON.parse(newValue);
+          this.toolbarOptions = parsedValue;
+        } catch (e) {
+          console.error('Geçersiz toolbar-options formatı:', e);
+        }
+        break;
+        
+      case 'pagination-options':
+        try {
+          const parsedValue = JSON.parse(newValue);
+          this.paginationOptions = parsedValue;
+        } catch (e) {
+          console.error('Geçersiz pagination-options formatı:', e);
+        }
+        break;
+        
+      case 'sort-options':
+        try {
+          const parsedValue = JSON.parse(newValue);
+          this.sortOptions = parsedValue;
+        } catch (e) {
+          console.error('Geçersiz sort-options formatı:', e);
+        }
+        break;
+        
       case 'height':
         this.height = newValue;
         break;
+        
       case 'striped':
         this.striped = newValue !== null && newValue !== 'false';
         break;
+        
       case 'bordered':
         this.bordered = newValue !== null && newValue !== 'false';
         break;
+        
       case 'responsive':
         this.responsive = newValue !== null && newValue !== 'false';
+        break;
+        
+      case 'language':
+        this.language = newValue;
+        break;
+        
+      default:
+        console.warn(`Bilinmeyen özellik değişti: ${name}`);
         break;
     }
     
@@ -430,6 +629,70 @@ export class ZenGrid extends HTMLElement {
       this._options.sortOptions = new SortOptions(value);
     }
     this.render();
+  }
+  
+  /**
+   * Toolbar seçenekleri getter
+   */
+  get toolbarOptions(): IToolbarOptions | undefined {
+    return this._options.toolbarOptions;
+  }
+  
+  /**
+   * Toolbar seçenekleri setter
+   */
+  set toolbarOptions(value: IToolbarOptions | undefined) {
+    if (!value) {
+      this._options.toolbarOptions = undefined;
+    } else {
+      this._options.toolbarOptions = new ToolbarOptions(value);
+    }
+    
+    this.updateToolbar();
+  }
+  
+  /**
+   * Toolbar'ı günceller
+   */
+  private updateToolbar(): void {
+    console.log('updateToolbar çağrıldı, toolbarOptions:', this._options.toolbarOptions);
+    
+    if (!this._options.toolbarOptions) {
+      console.log('Toolbar seçenekleri yok, çıkılıyor');
+      return;
+    }
+    
+    // Otomatik toolbar bulunamadıysa oluştur
+    if (!this.toolbarElement && this._options.toolbarOptions.visible) {
+      console.log('Toolbar bulunamadı, yeni oluşturuluyor');
+      this.toolbarElement = document.createElement('zen-grid-toolbar') as HTMLElement;
+      this.parentNode?.insertBefore(this.toolbarElement, this);
+      console.log('Toolbar oluşturuldu ve DOM\'a eklendi');
+    }
+    
+    // Toolbar'ın görünürlüğünü ayarla
+    if (this.toolbarElement) {
+      console.log('Toolbar element bulundu, görünürlük ayarlanıyor:', this._options.toolbarOptions.visible);
+      if (this._options.toolbarOptions.visible) {
+        (this.toolbarElement as HTMLElement).style.display = '';
+        
+        // Toolbar özelliklerini güncelle
+        if (this.toolbarElement instanceof HTMLElement) {
+          // Toolbar içeriğindeki arama ve dışa aktarma özelliklerini güncelle
+          // shadowRoot üzerinden doğrudan erişemediğimiz için custom event ile bildirelim
+          const toolbarEvent = new CustomEvent('toolbarOptionsChange', {
+            detail: {
+              search: this._options.toolbarOptions.search,
+              export: this._options.toolbarOptions.export
+            }
+          });
+          
+          this.toolbarElement.dispatchEvent(toolbarEvent);
+        }
+      } else {
+        (this.toolbarElement as HTMLElement).style.display = 'none';
+      }
+    }
   }
   
   /**
@@ -834,5 +1097,70 @@ export class ZenGrid extends HTMLElement {
     if (this._options.onSelectionChange) {
       this._options.onSelectionChange([]);
     }
+  }
+  
+  /**
+   * Property değişikliklerini izlemek için MutationObserver kurar
+   */
+  private setupPropertyChangeObserver(): void {
+    // Frameworks nasıl property ataması yapıyor gözlemlemek için
+    // Özellikle Angular, React ve Vue'da doğrudan property ataması yapıldığında
+    // bu observer çalışır
+    
+    // Bu işlev framework property atamalarını algılar ve 
+    // attributeChangedCallback'e yönlendirir
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes') {
+          const attrName = mutation.attributeName;
+          if (attrName) {
+            // attributeChangedCallback'i simüle et
+            const newValue = this.getAttribute(attrName);
+            if (newValue !== null) {
+              // Şu anda izlenen bir özellik mi diye kontrol et
+              const observedAttrs = (this.constructor as typeof ZenGrid).observedAttributes;
+              if (observedAttrs.includes(attrName)) {
+                this.attributeChangedCallback(attrName, "", newValue);
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // Bileşeni gözlemle
+    observer.observe(this, {
+      attributes: true
+    });
+  }
+  
+  /**
+   * Dil getter
+   */
+  get language(): string {
+    return this._options.language || 'tr';
+  }
+  
+  /**
+   * Dil setter
+   */
+  set language(value: string) {
+    this._options.language = value;
+    
+    // Dil servisine dil ayarını bildir
+    this.translationService.setLanguage(value);
+    
+    // Toolbar'ın dilini güncelle
+    if (this.toolbarElement && this._options.toolbarOptions) {
+      this._options.toolbarOptions.language = value;
+      this.updateToolbar();
+    }
+  }
+  
+  /**
+   * Çevirme yardımcı metodu
+   */
+  getTranslation(key: TranslationKey, params?: Record<string, string | number>): string {
+    return this.translationService.translate(key, params);
   }
 } 

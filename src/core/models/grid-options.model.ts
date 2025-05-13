@@ -1,7 +1,8 @@
-import { IGridOptions, IColumn, ISortOptions, IPaginationOptions } from '../interfaces';
+import { IGridOptions, IColumn, ISortOptions, IPaginationOptions, IToolbarOptions } from '../interfaces';
 import { Column } from './column.model';
 import { PaginationOptions } from './pagination-options.model';
 import { SortOptions } from './sort-options.model';
+import { ToolbarOptions } from './toolbar-options.model';
 
 /**
  * Zen-Grid yapılandırma seçenekleri modeli
@@ -12,6 +13,9 @@ export class GridOptions implements IGridOptions {
   
   /** Tabloda gösterilecek veri */
   data: any[];
+  
+  /** Toolbar seçenekleri */
+  toolbarOptions?: ToolbarOptions;
   
   /** Sıralama seçenekleri */
   sortOptions?: SortOptions;
@@ -55,6 +59,9 @@ export class GridOptions implements IGridOptions {
   /** Sayfa değiştiğinde çağrılacak callback */
   onPageChange?: (pageNumber: number) => void;
   
+  /** Dil seçeneği (tr, en) */
+  language?: string = 'tr'; // Varsayılan dil
+  
   constructor(options: IGridOptions) {
     // Sütunları dönüştür
     this.columns = options.columns.map(col => new Column(col));
@@ -63,6 +70,7 @@ export class GridOptions implements IGridOptions {
     this.data = options.data || [];
     
     // Diğer özellikleri ayarla
+    if (options.toolbarOptions) this.toolbarOptions = new ToolbarOptions(options.toolbarOptions);
     if (options.sortOptions) this.sortOptions = new SortOptions(options.sortOptions);
     if (options.paginationOptions) this.paginationOptions = new PaginationOptions(options.paginationOptions);
     if (options.height !== undefined) this.height = options.height;
@@ -79,5 +87,8 @@ export class GridOptions implements IGridOptions {
     if (options.onSelectionChange) this.onSelectionChange = options.onSelectionChange;
     if (options.onSortChange) this.onSortChange = options.onSortChange;
     if (options.onPageChange) this.onPageChange = options.onPageChange;
+    
+    // Dil ayarını yap
+    if (options.language !== undefined) this.language = options.language;
   }
 } 
