@@ -3,8 +3,9 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import babel from '@rollup/plugin-babel';
 import { terser } from 'rollup-plugin-terser';
+import { readFileSync } from 'fs';
 
-const packageJson = require('./package.json');
+const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 export default {
   input: 'src/index.ts',
@@ -13,11 +14,13 @@ export default {
       file: packageJson.main,
       format: 'cjs',
       sourcemap: true,
+      exports: 'named',
     },
     {
       file: packageJson.module,
       format: 'esm',
       sourcemap: true,
+      exports: 'named',
     },
     {
       file: 'dist/index.umd.js',
@@ -25,6 +28,7 @@ export default {
       name: 'ZenGrid',
       sourcemap: true,
       globals: {},
+      exports: 'named',
     },
   ],
   plugins: [
