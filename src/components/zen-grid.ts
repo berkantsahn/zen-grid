@@ -1,0 +1,838 @@
+import { GridOptions, Column, PaginationOptions, SortOptions } from '../core/models';
+import { IColumn, ISortOptions, IPaginationOptions, SortDirection } from '../core/interfaces';
+import { DomUtils, DataUtils } from '../core/utils';
+
+/**
+ * ZenGrid web bileşeni
+ */
+export class ZenGrid extends HTMLElement {
+  // Shadow DOM
+  private shadow!: ShadowRoot;
+  
+  // Temel konteynerler
+  private tableContainer!: HTMLDivElement;
+  private tableElement!: HTMLTableElement;
+  private tableHead!: HTMLTableSectionElement;
+  private tableBody!: HTMLTableSectionElement;
+  private paginationContainer!: HTMLDivElement;
+  
+  // Veri ve yapılandırma
+  private _options!: GridOptions;
+  private _filteredData: any[] = [];
+  private _selectedRows: any[] = [];
+  
+  /**
+   * Yapıcı metod
+   */
+  constructor() {
+    super();
+    
+    // Shadow DOM oluştur
+    this.shadow = this.attachShadow({ mode: 'open' });
+    
+    // Varsayılan seçenekleri ayarla
+    this._options = new GridOptions({
+      columns: [],
+      data: [],
+      striped: true,
+      bordered: true,
+      responsive: true,
+      showHeader: true,
+      emptyMessage: 'Görüntülenecek veri yok'
+    });
+    
+    // Temel yapıyı oluştur
+    this.createBaseStructure();
+    
+    // Stil oluştur
+    this.createStyles();
+  }
+  
+  /**
+   * Temel tablo yapısını oluşturur
+   */
+  private createBaseStructure(): void {
+    // Ana konteyner
+    this.tableContainer = DomUtils.createElement('div', { class: 'zen-grid-container' });
+    
+    // Tablo elementi
+    this.tableElement = DomUtils.createElement('table', { class: 'zen-grid-table' });
+    
+    // Tablo başlığı ve gövdesi
+    this.tableHead = DomUtils.createElement('thead');
+    this.tableBody = DomUtils.createElement('tbody');
+    
+    // Tabloyu oluştur
+    this.tableElement.appendChild(this.tableHead);
+    this.tableElement.appendChild(this.tableBody);
+    this.tableContainer.appendChild(this.tableElement);
+    
+    // Sayfalama konteynerı
+    this.paginationContainer = DomUtils.createElement('div', { class: 'zen-grid-pagination' });
+    this.tableContainer.appendChild(this.paginationContainer);
+    
+    // Shadow DOM'a ekle
+    this.shadow.appendChild(this.tableContainer);
+  }
+  
+  /**
+   * Stil oluşturur
+   */
+  private createStyles(): void {
+    const style = document.createElement('style');
+    style.textContent = `
+      :host {
+        display: block;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #333;
+      }
+      
+      .zen-grid-container {
+        overflow: auto;
+        width: 100%;
+      }
+      
+      .zen-grid-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin-bottom: 1rem;
+      }
+      
+      .zen-grid-table.bordered {
+        border: 1px solid #ddd;
+      }
+      
+      .zen-grid-table th,
+      .zen-grid-table td {
+        padding: 0.75rem;
+        vertical-align: top;
+        text-align: left;
+        border-top: 1px solid #ddd;
+      }
+      
+      .zen-grid-table.bordered th,
+      .zen-grid-table.bordered td {
+        border: 1px solid #ddd;
+      }
+      
+      .zen-grid-table thead th {
+        vertical-align: bottom;
+        border-bottom: 2px solid #ddd;
+        font-weight: 600;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        user-select: none;
+      }
+      
+      .zen-grid-table.striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+      
+      .zen-grid-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.075);
+      }
+      
+      .zen-grid-table tbody tr.selected {
+        background-color: rgba(0, 123, 255, 0.2);
+      }
+      
+      .zen-grid-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+      }
+      
+      .zen-grid-pagination-info {
+        font-size: 0.875rem;
+      }
+      
+      .zen-grid-pagination-buttons {
+        display: flex;
+        gap: 0.25rem;
+      }
+      
+      .zen-grid-pagination-button {
+        background-color: transparent;
+        border: 1px solid #ddd;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        min-width: 2rem;
+        text-align: center;
+      }
+      
+      .zen-grid-pagination-button:hover {
+        background-color: #f0f0f0;
+      }
+      
+      .zen-grid-pagination-button.active {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+      }
+      
+      .zen-grid-pagination-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .zen-grid-sort-icon {
+        display: inline-block;
+        margin-left: 0.25rem;
+        width: 0;
+        height: 0;
+        vertical-align: middle;
+      }
+      
+      .zen-grid-sort-icon.asc {
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-bottom: 6px solid currentColor;
+      }
+      
+      .zen-grid-sort-icon.desc {
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 6px solid currentColor;
+      }
+      
+      .zen-grid-empty-message {
+        padding: 2rem;
+        text-align: center;
+        color: #777;
+        font-style: italic;
+      }
+      
+      @media (max-width: 768px) {
+        .zen-grid-table.responsive thead {
+          display: none;
+        }
+        
+        .zen-grid-table.responsive tbody tr {
+          display: block;
+          margin-bottom: 1rem;
+          border: 1px solid #ddd;
+        }
+        
+        .zen-grid-table.responsive tbody td {
+          display: block;
+          text-align: right;
+          padding: 0.5rem;
+          border-top: none;
+        }
+        
+        .zen-grid-table.responsive tbody td::before {
+          content: attr(data-label);
+          float: left;
+          font-weight: bold;
+        }
+      }
+    `;
+    this.shadow.appendChild(style);
+  }
+  
+  /**
+   * Bileşen DOM'a eklendiğinde çağrılır
+   */
+  connectedCallback() {
+    this.render();
+  }
+  
+  /**
+   * İzlenen özellikleri tanımlar
+   */
+  static get observedAttributes() {
+    return ['columns', 'data', 'height', 'striped', 'bordered', 'responsive'];
+  }
+  
+  /**
+   * Bir özellik değiştiğinde çağrılır
+   */
+  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+    if (oldValue === newValue) return;
+    
+    switch (name) {
+      case 'columns':
+        try {
+          this.columns = JSON.parse(newValue);
+        } catch (e) {
+          console.error('Geçersiz sütun formatı:', e);
+        }
+        break;
+      case 'data':
+        try {
+          this.data = JSON.parse(newValue);
+        } catch (e) {
+          console.error('Geçersiz veri formatı:', e);
+        }
+        break;
+      case 'height':
+        this.height = newValue;
+        break;
+      case 'striped':
+        this.striped = newValue !== null && newValue !== 'false';
+        break;
+      case 'bordered':
+        this.bordered = newValue !== null && newValue !== 'false';
+        break;
+      case 'responsive':
+        this.responsive = newValue !== null && newValue !== 'false';
+        break;
+    }
+    
+    this.render();
+  }
+  
+  /**
+   * Veri getter
+   */
+  get data(): any[] {
+    return this._options.data;
+  }
+  
+  /**
+   * Veri setter
+   */
+  set data(value: any[]) {
+    this._options.data = value || [];
+    this._filteredData = [...this._options.data];
+    this._selectedRows = [];
+    this.render();
+  }
+  
+  /**
+   * Sütunlar getter
+   */
+  get columns(): IColumn[] {
+    return this._options.columns;
+  }
+  
+  /**
+   * Sütunlar setter
+   */
+  set columns(value: IColumn[]) {
+    this._options.columns = value.map(col => new Column(col));
+    this.render();
+  }
+  
+  /**
+   * Yükseklik getter
+   */
+  get height(): string | undefined {
+    return this._options.height;
+  }
+  
+  /**
+   * Yükseklik setter
+   */
+  set height(value: string | undefined) {
+    this._options.height = value;
+    if (value) {
+      this.tableContainer.style.height = value;
+      this.tableContainer.style.overflow = 'auto';
+    } else {
+      this.tableContainer.style.height = '';
+    }
+  }
+  
+  /**
+   * Çizgili görünüm getter
+   */
+  get striped(): boolean {
+    return !!this._options.striped;
+  }
+  
+  /**
+   * Çizgili görünüm setter
+   */
+  set striped(value: boolean) {
+    this._options.striped = value;
+    if (value) {
+      DomUtils.addClass(this.tableElement, 'striped');
+    } else {
+      DomUtils.removeClass(this.tableElement, 'striped');
+    }
+  }
+  
+  /**
+   * Kenarlıklı görünüm getter
+   */
+  get bordered(): boolean {
+    return !!this._options.bordered;
+  }
+  
+  /**
+   * Kenarlıklı görünüm setter
+   */
+  set bordered(value: boolean) {
+    this._options.bordered = value;
+    if (value) {
+      DomUtils.addClass(this.tableElement, 'bordered');
+    } else {
+      DomUtils.removeClass(this.tableElement, 'bordered');
+    }
+  }
+  
+  /**
+   * Duyarlı görünüm getter
+   */
+  get responsive(): boolean {
+    return !!this._options.responsive;
+  }
+  
+  /**
+   * Duyarlı görünüm setter
+   */
+  set responsive(value: boolean) {
+    this._options.responsive = value;
+    if (value) {
+      DomUtils.addClass(this.tableElement, 'responsive');
+    } else {
+      DomUtils.removeClass(this.tableElement, 'responsive');
+    }
+  }
+  
+  /**
+   * Sayfalama seçenekleri getter
+   */
+  get paginationOptions(): IPaginationOptions | undefined {
+    return this._options.paginationOptions;
+  }
+  
+  /**
+   * Sayfalama seçenekleri setter
+   */
+  set paginationOptions(value: IPaginationOptions | undefined) {
+    if (!value) {
+      this._options.paginationOptions = undefined;
+    } else {
+      this._options.paginationOptions = new PaginationOptions(value);
+    }
+    this.render();
+  }
+  
+  /**
+   * Sıralama seçenekleri getter
+   */
+  get sortOptions(): ISortOptions | undefined {
+    return this._options.sortOptions;
+  }
+  
+  /**
+   * Sıralama seçenekleri setter
+   */
+  set sortOptions(value: ISortOptions | undefined) {
+    if (!value) {
+      this._options.sortOptions = undefined;
+    } else {
+      this._options.sortOptions = new SortOptions(value);
+    }
+    this.render();
+  }
+  
+  /**
+   * Bileşeni render eder
+   */
+  render(): void {
+    this.renderHeaders();
+    this.renderBody();
+    this.renderPagination();
+    
+    // Ek CSS sınıflarını ayarla
+    this.striped = this.striped;
+    this.bordered = this.bordered;
+    this.responsive = this.responsive;
+  }
+  
+  /**
+   * Tablo başlıklarını oluşturur
+   */
+  private renderHeaders(): void {
+    if (!this._options.showHeader) {
+      DomUtils.clearElement(this.tableHead);
+      return;
+    }
+    
+    DomUtils.clearElement(this.tableHead);
+    
+    if (this._options.columns.length === 0) {
+      return;
+    }
+    
+    const headerRow = DomUtils.createElement('tr');
+    
+    this._options.columns.forEach(column => {
+      const th = DomUtils.createElement('th', { 
+        'data-field': column.field,
+        'style': column.width ? `width: ${column.width}` : '',
+        'class': column.cssClass || ''
+      });
+      
+      // Başlık metni
+      const headerText = document.createTextNode(column.header);
+      th.appendChild(headerText);
+      
+      // Sıralama ikonu
+      if (column.sortable) {
+        const sortIcon = DomUtils.createElement('span', { 
+          class: 'zen-grid-sort-icon'
+        });
+        
+        // Eğer bu sütun sıralanmışsa, ikon sınıfını ayarla
+        if (this._options.sortOptions && this._options.sortOptions.field === column.field) {
+          sortIcon.classList.add(this._options.sortOptions.direction);
+        }
+        
+        th.appendChild(sortIcon);
+        
+        // Sıralama tıklama olayı ekle
+        th.addEventListener('click', () => this.handleSortClick(column.field));
+      }
+      
+      // Hizalama
+      if (column.align) {
+        th.style.textAlign = column.align;
+      }
+      
+      headerRow.appendChild(th);
+    });
+    
+    this.tableHead.appendChild(headerRow);
+  }
+  
+  /**
+   * Tablo gövdesini oluşturur
+   */
+  private renderBody(): void {
+    DomUtils.clearElement(this.tableBody);
+    
+    // Veri yoksa boş mesaj göster
+    if (this._filteredData.length === 0) {
+      const emptyRow = DomUtils.createElement('tr');
+      const emptyCell = DomUtils.createElement('td', {
+        colspan: String(this._options.columns.length || 1),
+        class: 'zen-grid-empty-message'
+      }, [this._options.emptyMessage]);
+      
+      emptyRow.appendChild(emptyCell);
+      this.tableBody.appendChild(emptyRow);
+      return;
+    }
+    
+    // Sayfalama varsa, mevcut sayfadaki verileri göster
+    let dataToShow = this._filteredData;
+    
+    if (this._options.paginationOptions) {
+      const { currentPage, pageSize } = this._options.paginationOptions;
+      dataToShow = DataUtils.paginate(this._filteredData, currentPage, pageSize);
+    }
+    
+    // Veriyi göster
+    dataToShow.forEach((rowData, rowIndex) => {
+      const row = DomUtils.createElement('tr', {
+        'data-index': String(rowIndex)
+      });
+      
+      // Satır seçilebilir mi
+      if (this._options.selectable) {
+        row.addEventListener('click', () => this.handleRowClick(rowData, row));
+        
+        // Eğer bu satır seçiliyse, seçili sınıfını ekle
+        if (this._selectedRows.includes(rowData)) {
+          DomUtils.addClass(row, 'selected');
+        }
+      }
+      
+      // Sütunları oluştur
+      this._options.columns.forEach(column => {
+        const cellValue = DataUtils.getNestedValue(rowData, column.field);
+        let cellContent: string | HTMLElement = cellValue !== null && cellValue !== undefined 
+          ? String(cellValue) 
+          : '';
+        
+        // Özel hücre render fonksiyonu varsa kullan
+        if (column.cellRenderer) {
+          const rendered = column.cellRenderer(rowData, rowIndex);
+          if (rendered) {
+            cellContent = rendered;
+          }
+        }
+        
+        const cell = DomUtils.createElement('td', {
+          'data-label': column.header,
+          'class': column.cssClass || ''
+        });
+        
+        // Hizalama
+        if (column.align) {
+          cell.style.textAlign = column.align;
+        }
+        
+        // İçeriği ekle
+        if (typeof cellContent === 'string') {
+          cell.textContent = cellContent;
+        } else {
+          cell.appendChild(cellContent);
+        }
+        
+        row.appendChild(cell);
+      });
+      
+      this.tableBody.appendChild(row);
+    });
+  }
+  
+  /**
+   * Sayfalama arayüzünü oluşturur
+   */
+  private renderPagination(): void {
+    DomUtils.clearElement(this.paginationContainer);
+    
+    // Sayfalama ayarlanmamışsa gösterme
+    if (!this._options.paginationOptions) {
+      return;
+    }
+    
+    const { currentPage, pageSize, totalItems, showFirstLastButtons, maxPageButtons } = this._options.paginationOptions;
+    
+    // Toplam sayfa sayısını hesapla
+    const totalPages = Math.ceil(this._filteredData.length / pageSize);
+    
+    // Sayfalama gereksizse gösterme
+    if (totalPages <= 1) {
+      return;
+    }
+    
+    // Sayfalama bilgisi
+    const paginationInfo = DomUtils.createElement('div', { class: 'zen-grid-pagination-info' });
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, this._filteredData.length);
+    paginationInfo.textContent = `${startItem}-${endItem} / ${this._filteredData.length}`;
+    
+    // Sayfalama düğmeleri
+    const paginationButtons = DomUtils.createElement('div', { class: 'zen-grid-pagination-buttons' });
+    
+    // İlk sayfa düğmesi
+    if (showFirstLastButtons) {
+      const firstButton = DomUtils.createElement('button', {
+        class: 'zen-grid-pagination-button',
+        disabled: currentPage === 1 ? 'disabled' : ''
+      }, ['«']);
+      
+      firstButton.addEventListener('click', () => this.handlePageChange(1));
+      paginationButtons.appendChild(firstButton);
+    }
+    
+    // Önceki sayfa düğmesi
+    const prevButton = DomUtils.createElement('button', {
+      class: 'zen-grid-pagination-button',
+      disabled: currentPage === 1 ? 'disabled' : ''
+    }, ['‹']);
+    
+    prevButton.addEventListener('click', () => this.handlePageChange(currentPage - 1));
+    paginationButtons.appendChild(prevButton);
+    
+    // Sayfa numarası düğmeleri
+    const maxButtons = maxPageButtons || 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    
+    if (endPage - startPage + 1 < maxButtons) {
+      startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      const pageButton = DomUtils.createElement('button', {
+        class: `zen-grid-pagination-button ${i === currentPage ? 'active' : ''}`
+      }, [String(i)]);
+      
+      pageButton.addEventListener('click', () => this.handlePageChange(i));
+      paginationButtons.appendChild(pageButton);
+    }
+    
+    // Sonraki sayfa düğmesi
+    const nextButton = DomUtils.createElement('button', {
+      class: 'zen-grid-pagination-button',
+      disabled: currentPage === totalPages ? 'disabled' : ''
+    }, ['›']);
+    
+    nextButton.addEventListener('click', () => this.handlePageChange(currentPage + 1));
+    paginationButtons.appendChild(nextButton);
+    
+    // Son sayfa düğmesi
+    if (showFirstLastButtons) {
+      const lastButton = DomUtils.createElement('button', {
+        class: 'zen-grid-pagination-button',
+        disabled: currentPage === totalPages ? 'disabled' : ''
+      }, ['»']);
+      
+      lastButton.addEventListener('click', () => this.handlePageChange(totalPages));
+      paginationButtons.appendChild(lastButton);
+    }
+    
+    this.paginationContainer.appendChild(paginationInfo);
+    this.paginationContainer.appendChild(paginationButtons);
+  }
+  
+  /**
+   * Sıralama tıklama olayını işler
+   */
+  private handleSortClick(field: string): void {
+    // Sıralama seçenekleri yoksa oluştur
+    if (!this._options.sortOptions) {
+      this._options.sortOptions = new SortOptions({
+        field,
+        direction: SortDirection.ASC
+      });
+    } else if (this._options.sortOptions.field === field) {
+      // Aynı sütuna tıklanmışsa, sıralama yönünü değiştir
+      this._options.sortOptions.direction = this._options.sortOptions.direction === SortDirection.ASC 
+        ? SortDirection.DESC 
+        : SortDirection.ASC;
+    } else {
+      // Farklı sütuna tıklanmışsa, yeni sütunu sırala
+      this._options.sortOptions.field = field;
+      this._options.sortOptions.direction = SortDirection.ASC;
+    }
+    
+    // Verileri sırala
+    this.sortData();
+    
+    // Yeniden render et
+    this.render();
+    
+    // Callback çağır
+    if (this._options.onSortChange) {
+      this._options.onSortChange(this._options.sortOptions);
+    }
+  }
+  
+  /**
+   * Verileri sıralar
+   */
+  private sortData(): void {
+    if (!this._options.sortOptions || !this._options.sortOptions.field) {
+      this._filteredData = [...this._options.data];
+      return;
+    }
+    
+    const { field, direction, comparator } = this._options.sortOptions;
+    
+    this._filteredData.sort((a, b) => {
+      // Özel karşılaştırıcı varsa kullan
+      if (comparator) {
+        return direction === 'asc' ? comparator(a, b) : comparator(b, a);
+      }
+      
+      const aValue = DataUtils.getNestedValue(a, field);
+      const bValue = DataUtils.getNestedValue(b, field);
+      
+      // Null/undefined değerleri sona yerleştir
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+      
+      // Karşılaştırma yap
+      let comparison = 0;
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else {
+        comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      }
+      
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  }
+  
+  /**
+   * Sayfa değişikliği olayını işler
+   */
+  private handlePageChange(pageNumber: number): void {
+    if (!this._options.paginationOptions) {
+      return;
+    }
+    
+    // Geçerli sayfa kontrolü
+    if (pageNumber < 1 || pageNumber > Math.ceil(this._filteredData.length / this._options.paginationOptions.pageSize)) {
+      return;
+    }
+    
+    this._options.paginationOptions.currentPage = pageNumber;
+    this.render();
+    
+    // Callback çağır
+    if (this._options.onPageChange) {
+      this._options.onPageChange(pageNumber);
+    }
+  }
+  
+  /**
+   * Satır tıklama olayını işler
+   */
+  private handleRowClick(rowData: any, rowElement: HTMLTableRowElement): void {
+    const isSelected = this._selectedRows.includes(rowData);
+    
+    if (isSelected) {
+      // Seçimi kaldır
+      this._selectedRows = this._selectedRows.filter(row => row !== rowData);
+      DomUtils.removeClass(rowElement, 'selected');
+    } else {
+      // Eğer çoklu seçim yoksa, önceki seçimleri temizle
+      if (!this._options.multiSelectable) {
+        this._selectedRows = [];
+        // Tüm satırlardan selected sınıfını kaldır
+        this.tableBody.querySelectorAll('tr.selected').forEach(tr => {
+          DomUtils.removeClass(tr as HTMLElement, 'selected');
+        });
+      }
+      
+      // Yeni satırı seç
+      this._selectedRows.push(rowData);
+      DomUtils.addClass(rowElement, 'selected');
+    }
+    
+    // Callback çağır
+    if (this._options.onSelectionChange) {
+      this._options.onSelectionChange([...this._selectedRows]);
+    }
+  }
+  
+  /**
+   * Seçili satırları döndürür
+   */
+  getSelectedRows(): any[] {
+    return [...this._selectedRows];
+  }
+  
+  /**
+   * Verileri filtreler
+   */
+  filter(filters: Record<string, any>): void {
+    this._filteredData = DataUtils.filter(this._options.data, filters);
+    
+    // Sayfalama varsa ilk sayfaya dön
+    if (this._options.paginationOptions) {
+      this._options.paginationOptions.currentPage = 1;
+      this._options.paginationOptions.totalItems = this._filteredData.length;
+    }
+    
+    this.render();
+  }
+  
+  /**
+   * Seçili satırları temizler
+   */
+  clearSelection(): void {
+    this._selectedRows = [];
+    this.tableBody.querySelectorAll('tr.selected').forEach(tr => {
+      DomUtils.removeClass(tr as HTMLElement, 'selected');
+    });
+    
+    // Callback çağır
+    if (this._options.onSelectionChange) {
+      this._options.onSelectionChange([]);
+    }
+  }
+} 

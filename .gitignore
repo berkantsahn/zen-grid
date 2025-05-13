@@ -1,0 +1,33 @@
+# Modül bağımlılıkları
+node_modules/
+
+# Build klasörü
+dist/
+
+# TypeScript derleme çıktıları
+*.tsbuildinfo
+
+# IDE dosyaları
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Log dosyaları
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# Test kapsam çıktıları
+coverage/
+
+# Environment değişkenleri
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 

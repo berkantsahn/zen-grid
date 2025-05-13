@@ -1,0 +1,42 @@
+{
+  "name": "zen-grid",
+  "version": "0.1.0",
+  "description": "Modern data table component for Angular, React, and Vue",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "datatable",
+    "table",
+    "grid",
+    "web-component",
+    "angular",
+    "react",
+    "vue"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
+    "@babel/preset-typescript": "^7.22.5",
+    "@rollup/plugin-babel": "^6.0.3",
+    "@rollup/plugin-commonjs": "^25.0.2",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@rollup/plugin-typescript": "^11.1.1",
+    "rimraf": "^5.0.1",
+    "rollup": "^3.25.1",
+    "rollup-plugin-terser": "^7.0.2",
+    "tslib": "^2.5.3",
+    "typescript": "^5.1.3"
+  }
+} 

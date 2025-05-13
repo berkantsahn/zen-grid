@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zen-Grid Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      color: #333;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background-color: #3e8e41;
+    }
+    
+    select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .options {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .options label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .source-code {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    
+    code {
+      display: block;
+      white-space: pre-wrap;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 15px;
+      background-color: #2c3e50;
+      color: #f8f9fa;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zen-Grid Demo</h1>
+  
+  <div class="controls">
+    <button id="addRow">Satır Ekle</button>
+    <button id="removeRow">Satır Sil</button>
+    <button id="clearSelection">Seçimi Temizle</button>
+    <select id="filterSelect">
+      <option value="">Hepsini Göster</option>
+      <option value="istanbul">İstanbul</option>
+      <option value="ankara">Ankara</option>
+      <option value="izmir">İzmir</option>
+    </select>
+  </div>
+  
+  <div class="options">
+    <label>
+      <input type="checkbox" id="striped" checked> Çizgili Görünüm
+    </label>
+    <label>
+      <input type="checkbox" id="bordered" checked> Kenarlıklar
+    </label>
+    <label>
+      <input type="checkbox" id="responsive" checked> Duyarlı Tasarım
+    </label>
+    <label>
+      <input type="checkbox" id="selectable"> Satır Seçimi
+    </label>
+    <label>
+      <input type="checkbox" id="multiSelectable"> Çoklu Seçim
+    </label>
+  </div>
+  
+  <zen-grid id="myTable" height="400px"></zen-grid>
+  
+  <div class="source-code">
+    <h3>Örnek Kod</h3>
+    <code id="exampleCode">
+const grid = document.getElementById('myTable');
+
+// Sütunları ayarla
+grid.columns = [
+  { field: 'id', header: 'ID', width: '80px' },
+  { field: 'name', header: 'Ad', width: '150px' },
+  { field: 'city', header: 'Şehir' },
+  { field: 'email', header: 'E-posta', width: '220px' },
+  { field: 'age', header: 'Yaş', width: '80px', align: 'center' }
+];
+
+// Veriyi ayarla
+grid.data = [
+  { id: 1, name: 'Ahmet Yılmaz', city: 'İstanbul', email: 'ahmet@ornek.com', age: 32 },
+  { id: 2, name: 'Ayşe Demir', city: 'Ankara', email: 'ayse@ornek.com', age: 28 },
+  { id: 3, name: 'Mehmet Kaya', city: 'İzmir', email: 'mehmet@ornek.com', age: 41 },
+  { id: 4, name: 'Zeynep Çelik', city: 'İstanbul', email: 'zeynep@ornek.com', age: 35 },
+  { id: 5, name: 'Mustafa Şahin', city: 'Ankara', email: 'mustafa@ornek.com', age: 29 }
+];
+
+// Olayları dinle
+grid.addEventListener('selectionChange', (event) => {
+  console.log('Seçilen satırlar:', event.detail);
+});
+
+grid.addEventListener('sortChange', (event) => {
+  console.log('Sıralama değişti:', event.detail);
+});
+
+grid.addEventListener('pageChange', (event) => {
+  console.log('Sayfa değişti:', event.detail);
+});
+    </code>
+  </div>
+  
+  <script type="module">
+    import ZenGrid from '../dist/index.js';
+    
+    // Tabloyu al
+    const grid = document.getElementById('myTable');
+    
+    // Örnek veri
+    const data = [
+      { id: 1, name: 'Ahmet Yılmaz', city: 'İstanbul', email: 'ahmet@ornek.com', age: 32 },
+      { id: 2, name: 'Ayşe Demir', city: 'Ankara', email: 'ayse@ornek.com', age: 28 },
+      { id: 3, name: 'Mehmet Kaya', city: 'İzmir', email: 'mehmet@ornek.com', age: 41 },
+      { id: 4, name: 'Zeynep Çelik', city: 'İstanbul', email: 'zeynep@ornek.com', age: 35 },
+      { id: 5, name: 'Mustafa Şahin', city: 'Ankara', email: 'mustafa@ornek.com', age: 29 }
+    ];
+    
+    // Sütunları ayarla
+    grid.columns = [
+      { field: 'id', header: 'ID', width: '80px' },
+      { field: 'name', header: 'Ad', width: '150px' },
+      { field: 'city', header: 'Şehir' },
+      { field: 'email', header: 'E-posta', width: '220px' },
+      { field: 'age', header: 'Yaş', width: '80px', align: 'center' }
+    ];
+    
+    // Veriyi ayarla
+    grid.data = [...data];
+    
+    // Sayfalama seçenekleri
+    grid.paginationOptions = {
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: data.length,
+      showFirstLastButtons: true,
+      showPageSizeOptions: true,
+      pageSizeOptions: [5, 10, 20, 50]
+    };
+    
+    // Olayları dinle
+    grid.addEventListener('selectionChange', (event) => {
+      console.log('Seçilen satırlar:', event.detail);
+    });
+    
+    // Kontrolleri bağla
+    document.getElementById('addRow').addEventListener('click', () => {
+      const newId = grid.data.length > 0 ? Math.max(...grid.data.map(item => item.id)) + 1 : 1;
+      const cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya'];
+      const city = cities[Math.floor(Math.random() * cities.length)];
+      
+      const newRow = {
+        id: newId,
+        name: `Kullanıcı ${newId}`,
+        city: city,
+        email: `kullanici${newId}@ornek.com`,
+        age: 20 + Math.floor(Math.random() * 40)
+      };
+      
+      grid.data = [...grid.data, newRow];
+    });
+    
+    document.getElementById('removeRow').addEventListener('click', () => {
+      if (grid.data.length > 0) {
+        const newData = [...grid.data];
+        newData.pop();
+        grid.data = newData;
+      }
+    });
+    
+    document.getElementById('clearSelection').addEventListener('click', () => {
+      grid.clearSelection();
+    });
+    
+    document.getElementById('filterSelect').addEventListener('change', (e) => {
+      const city = e.target.value;
+      
+      if (city) {
+        grid.filter({ city: city });
+      } else {
+        grid.data = [...data];
+      }
+    });
+    
+    // Checkbox kontrolleri
+    document.getElementById('striped').addEventListener('change', (e) => {
+      grid.striped = e.target.checked;
+    });
+    
+    document.getElementById('bordered').addEventListener('change', (e) => {
+      grid.bordered = e.target.checked;
+    });
+    
+    document.getElementById('responsive').addEventListener('change', (e) => {
+      grid.responsive = e.target.checked;
+    });
+    
+    document.getElementById('selectable').addEventListener('change', (e) => {
+      grid._options.selectable = e.target.checked;
+      grid.render();
+    });
+    
+    document.getElementById('multiSelectable').addEventListener('change', (e) => {
+      grid._options.multiSelectable = e.target.checked;
+      grid.render();
+    });
+  </script>
+</body>
+</html> 
