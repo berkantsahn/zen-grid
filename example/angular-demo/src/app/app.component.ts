@@ -6,6 +6,14 @@ import { ZenGrid, ZenGridToolbar } from 'zen-grid';
 // Bu satır geliştirme amaçlıdır, gerçek uygulamada kaldırılabilir
 console.log('ZenGrid sınıfı import edildi:', !!ZenGrid, 'ZenGridToolbar sınıfı import edildi:', !!ZenGridToolbar);
 
+// Arabirim ekleyelim
+interface ToolbarOptions {
+  visible: boolean;
+  search: boolean;
+  export: boolean;
+  language: string;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -35,6 +43,39 @@ console.log('ZenGrid sınıfı import edildi:', !!ZenGrid, 'ZenGridToolbar sın�
             <option value="10">10</option>
           </select>
         </div>
+        
+        <div class="setting-group">
+          <h3>Toolbar Ayarları</h3>
+          <div class="setting">
+            <label>Görünürlük:</label>
+            <button (click)="updateToolbarVisibility(true)">Görünür</button>
+            <button (click)="updateToolbarVisibility(false)">Gizli</button>
+          </div>
+          
+          <div class="setting">
+            <label>Arama:</label>
+            <button (click)="updateToolbarSearch(true)">Açık</button>
+            <button (click)="updateToolbarSearch(false)">Kapalı</button>
+          </div>
+          
+          <div class="setting">
+            <label>Dışa Aktarma:</label>
+            <button (click)="updateToolbarExport(true)">Açık</button>
+            <button (click)="updateToolbarExport(false)">Kapalı</button>
+          </div>
+          
+          <div class="setting">
+            <label>Dil:</label>
+            <button (click)="updateToolbarLanguage('tr')">Türkçe</button>
+            <button (click)="updateToolbarLanguage('en')">İngilizce</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Geçerli ayarları göster -->
+      <div class="current-settings">
+        <h3>Geçerli Toolbar Ayarları</h3>
+        <pre>{{ toolbarOptions | json }}</pre>
       </div>
       
       <!-- Direkt veri görüntüleme -->
@@ -84,6 +125,42 @@ console.log('ZenGrid sınıfı import edildi:', !!ZenGrid, 'ZenGridToolbar sın�
       display: inline-block;
       width: 120px;
       font-weight: bold;
+    }
+    .setting button {
+      margin-right: 5px;
+      padding: 5px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fff;
+      cursor: pointer;
+    }
+    .setting button:hover {
+      background-color: #f0f0f0;
+    }
+    .setting-group {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .setting-group h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    .current-settings {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    .current-settings pre {
+      margin: 0;
+      padding: 10px;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      overflow: auto;
     }
     .manual-data {
       margin-top: 30px;
@@ -147,14 +224,73 @@ export class AppComponent implements AfterViewInit, OnInit {
     direction: 'asc'
   };
   
-  toolbarOptions = {
+  toolbarOptions: ToolbarOptions = {
     visible: true,
-    search: true,
-    export: true,
+    search: false,
+    export: false,
     language: 'en'
   };
   
   constructor(private zone: NgZone) {}
+  
+  /**
+   * Zen-Grid ve Zen-Grid-Toolbar arasındaki bağlantıları manuel olarak kurar
+   * Bu fonksiyon, web bileşenleri arasındaki iletişim sorunlarını çözmek için eklendi
+   */
+  private setupComponentConnections(): void {
+    console.log('Angular: Grid ve Toolbar arasındaki bağlantılar kuruluyor');
+    
+    // Tüm sayfayı tara
+    setTimeout(() => {
+      // ZenGrid ve ZenGridToolbar elementlerini bul
+      const gridElements = document.querySelectorAll('zen-grid');
+      const toolbarElements = document.querySelectorAll('zen-grid-toolbar');
+      
+      console.log(`Angular: ${gridElements.length} grid ve ${toolbarElements.length} toolbar bulundu`);
+      
+      if (gridElements.length > 0 && toolbarElements.length > 0) {
+        // Her grid için en yakın toolbar'ı bul ve referansları kur
+        gridElements.forEach((grid, index) => {
+          const toolbar = toolbarElements[index] || toolbarElements[0];
+          
+          // Test script ile grid ve toolbar arasında doğrudan bağlantı kur
+          try {
+            // @ts-ignore: Web bileşeni özel özellikleri
+            grid._toolbarElement = toolbar;
+            
+            // @ts-ignore: Web bileşeni özel özellikleri
+            toolbar.gridElement = grid;
+            
+            console.log('Angular: Grid ve Toolbar arasında manuel bağlantı kuruldu');
+            
+            // Sıfırdan arama fonksiyonunu kur
+            const searchInput = toolbar.shadowRoot?.querySelector('.zen-grid-search-input') as HTMLInputElement;
+            if (searchInput) {
+              searchInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                const searchTerm = target.value;
+                console.log('Angular: Manuel arama eventlistener çalıştı:', searchTerm);
+                
+                // @ts-ignore: filter metodu
+                if (typeof grid.filter === 'function') {
+                  if (searchTerm.trim()) {
+                    // @ts-ignore: filter metodu
+                    grid.filter({ searchTerm: searchTerm.trim() });
+                  } else {
+                    // @ts-ignore: filter metodu
+                    grid.filter({});
+                  }
+                }
+              });
+              console.log('Angular: Arama kutusuna manuel event listener eklendi');
+            }
+          } catch (e) {
+            console.error('Angular: Grid-Toolbar bağlantısı manuel kurulurken hata:', e);
+          }
+        });
+      }
+    }, 500);
+  }
   
   ngOnInit() {
     console.log('AppComponent ngOnInit çağrıldı');
@@ -167,6 +303,9 @@ export class AppComponent implements AfterViewInit, OnInit {
     if (!customElements.get('zen-grid-toolbar')) {
       console.warn('zen-grid-toolbar henüz tanımlanmamış!');
     }
+    
+    // Grid ve Toolbar arasındaki bağlantıyı manuel olarak kur
+    this.setupComponentConnections();
     
     // 2 saniye sonra tekrar kontrol et
     setTimeout(() => {
@@ -185,12 +324,24 @@ export class AppComponent implements AfterViewInit, OnInit {
   }
   
   ngAfterViewInit() {
-    // Toolbar seçeneklerini manuel olarak atayıp hata ayıklama yapıyoruz
+    // Toolbar seçeneklerini manuel olarak ayarla
     if (this.zenGridElement && this.zenGridElement.nativeElement) {
-      console.log('Toolbar seçenekleri atanıyor:', this.toolbarOptions);
-      this.zenGridElement.nativeElement.toolbarOptions = this.toolbarOptions;
-    } else {
-      console.warn('zenGridElement bulunamadı!');
+      console.log('ngAfterViewInit: Toolbar seçenekleri atanıyor:', this.toolbarOptions);
+      
+      // Doğrudan attribute olarak ayarla (en güvenli yöntem)
+      this.zenGridElement.nativeElement.setAttribute('toolbar-options', 
+        JSON.stringify({
+          visible: this.toolbarOptions.visible,
+          search: this.toolbarOptions.search, 
+          export: this.toolbarOptions.export,
+          language: this.toolbarOptions.language
+        })
+      );
+      
+      // Biraz gecikme ile event tetikleyelim
+      setTimeout(() => {
+        this.updateToolbarOptions();
+      }, 300);
     }
     
     // Manuel olarak event dinleyicisi ekle
@@ -254,33 +405,88 @@ export class AppComponent implements AfterViewInit, OnInit {
   updateToolbarVisibility(visible: boolean) {
     this.toolbarOptions = {
       ...this.toolbarOptions,
-      visible
+      visible: visible ? true : false
     };
     
+    console.log('Toolbar görünürlüğü değişti:', visible);
     this.updateToolbarOptions();
   }
   
   updateToolbarSearch(search: boolean) {
     this.toolbarOptions = {
       ...this.toolbarOptions,
-      search
+      search: search ? true : false
     };
     
+    console.log('Arama görünürlüğü değişti:', search);
     this.updateToolbarOptions();
   }
   
   updateToolbarExport(exportVisible: boolean) {
     this.toolbarOptions = {
       ...this.toolbarOptions,
-      export: exportVisible
+      export: exportVisible ? true : false
     };
     
+    console.log('Dışa aktarma görünürlüğü değişti:', exportVisible);
+    this.updateToolbarOptions();
+  }
+  
+  updateToolbarLanguage(language: string) {
+    this.toolbarOptions = {
+      ...this.toolbarOptions,
+      language
+    };
+    
+    console.log('Dil değişti:', language);
     this.updateToolbarOptions();
   }
   
   updateToolbarOptions() {
     if (this.zenGridElement && this.zenGridElement.nativeElement) {
-      this.zenGridElement.nativeElement.toolbarOptions = this.toolbarOptions;
+      // Boolean değerleri sayılara dönüştür (1 = true, 0 = false)
+      const numericToolbarOptions = {
+        visible: this.toolbarOptions.visible ? true : false,
+        search: this.toolbarOptions.search ? true : false,
+        export: this.toolbarOptions.export ? true : false,
+        language: this.toolbarOptions.language
+      };
+      
+      console.log('Toolbar seçenekleri güncelleniyor:', numericToolbarOptions);
+      
+      try {
+        // 1. Doğrudan öznitelik (attribute) ayarla - en güvenilir yöntem
+        this.zenGridElement.nativeElement.setAttribute(
+          'toolbar-options', 
+          JSON.stringify(numericToolbarOptions)
+        );
+        console.log('Toolbar seçenekleri attribute olarak ayarlandı');
+        
+        // 2. HTML özelliği olarak ayarla
+        this.zenGridElement.nativeElement.toolbarOptions = numericToolbarOptions;
+        console.log('Toolbar seçenekleri property olarak ayarlandı');
+        
+        // 3. Özel olay tetikle
+        setTimeout(() => {
+          if (this.zenGridElement && this.zenGridElement.nativeElement) {
+            const event = new CustomEvent('toolbarOptionsChange', {
+              detail: numericToolbarOptions
+            });
+            
+            console.log('ToolbarOptionsChange olayı tetikleniyor:', event.detail);
+            
+            try {
+              this.zenGridElement.nativeElement.dispatchEvent(event);
+              console.log('Toolbar seçenekleri olayı gönderildi');
+            } catch (error) {
+              console.error('Toolbar olay tetikleme hatası:', error);
+            }
+          }
+        }, 0);
+        
+      } catch (err) {
+        console.error('Toolbar seçenekleri güncellenirken hata oluştu:', err);
+      }
     }
   }
 }

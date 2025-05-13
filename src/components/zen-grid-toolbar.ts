@@ -179,29 +179,120 @@ export class ZenGridToolbar extends HTMLElement {
    * Bileşen DOM'a eklendiğinde çağrılır
    */
   connectedCallback() {
-    // En yakın ZenGrid bileşenini bul
+    console.log('ZenGridToolbar: connectedCallback çağrıldı');
+    
+    // Bir kere daha ref oluşturmayı hemen dene
     this.gridElement = this.findZenGridElement();
+    console.log('ZenGridToolbar: İlk ref oluşturma - Grid elementi bulundu mu?:', !!this.gridElement);
     
-    // Varsayılan araç çubuğu içeriğini oluştur
-    this.renderDefaultContent();
-    
-    // Toolbar özelliklerini dinle
-    this.addEventListener('toolbarOptionsChange', this.handleToolbarOptionsChange.bind(this));
-    
-    // Toolbar dil değişimi olayını dinle
-    this.addEventListener('languageChange', this.handleLanguageChange.bind(this));
+    // DOM tamamen hazır olduğunda grid bileşenini bul
+    // Not: DOM bağlantısı tam kurulmadan grid bulunamayabilir, bu nedenle gecikmeli kontrol ekliyoruz
+    setTimeout(() => {
+      // Yeni bir grid ref bul (eğer ilk aramada bulunmadıysa)
+      if (!this.gridElement) {
+        this.gridElement = this.findZenGridElement();
+        console.log('ZenGridToolbar: Gecikmeli ref oluşturma - Grid elementi bulundu mu?:', !!this.gridElement);
+      }
+      
+      if (this.gridElement) {
+        // Referans bilgilerini logla
+        console.log('ZenGridToolbar: Grid elementinin ID\'si:', this.gridElement.id);
+        console.log('ZenGridToolbar: Grid elementinin classList\'i:', Array.from(this.gridElement.classList));
+        
+        // Test amaçlı - filter metodunu doğrudan çağırabilir miyiz?
+        try {
+          console.log('ZenGridToolbar: Grid filter metodu mevcut mu?', typeof (this.gridElement as any).filter === 'function');
+        } catch (e) {
+          console.warn('ZenGridToolbar: Filter metodu test edilirken hata:', e);
+        }
+        
+        // Toolbar ve grid arasındaki bağlantıyı kuvvetlendir (çift yönlü)
+        try {
+          // @ts-ignore: grid.toolbar bağlantısı
+          if (typeof this.gridElement.toolbar === 'function') {
+            // @ts-ignore
+            this.gridElement.toolbar(this);
+            console.log('ZenGridToolbar: Grid\'e toolbar referansı verildi');
+          }
+        } catch (e) {
+          console.warn('ZenGridToolbar: Grid\'e toolbar referansı verilirken hata:', e);
+        }
+      }
+      
+      // Varsayılan araç çubuğu içeriğini oluştur
+      this.renderDefaultContent();
+      
+      // Event dinleyicileri
+      this.addEventListener('toolbarOptionsChange', (e) => {
+        console.log('ZenGridToolbar: toolbarOptionsChange olayı alındı');
+        this.handleToolbarOptionsChange(e);
+      });
+      
+      this.addEventListener('languageChange', (e) => {
+        console.log('ZenGridToolbar: languageChange olayı alındı');
+        this.handleLanguageChange(e);
+      });
+      
+      // Filtreleme sonuçlarını dinle
+      if (this.gridElement) {
+        this.gridElement.addEventListener('filtered', (e: Event) => {
+          console.log('ZenGridToolbar: Grid filtered olayı alındı');
+          const customEvent = e as CustomEvent;
+          console.log('ZenGridToolbar: Filtreleme sonucu:', customEvent.detail);
+        });
+      }
+      
+      // Yapılandırmayı gridElement'ten al (eğer mevcutsa)
+      if (this.gridElement) {
+        try {
+          // @ts-ignore: toolbar özelliklerine erişim
+          const options = this.gridElement.toolbarOptions;
+          if (options) {
+            console.log('ZenGridToolbar: Grid\'den toolbar seçenekleri alındı:', options);
+            // Seçenekleri uygulamak için olay tetikle
+            const event = new CustomEvent('toolbarOptionsChange', {
+              detail: options
+            });
+            this.dispatchEvent(event);
+          }
+        } catch (e) {
+          console.error('ZenGridToolbar: Grid\'den toolbar seçenekleri alınırken hata:', e);
+        }
+      }
+    }, 100); // 100ms gecikme ekleyelim, DOM'un tam olarak yüklenmesi için
   }
   
   /**
    * Dil değişimini işler
    */
   private handleLanguageChange(event: Event) {
-    const customEvent = event as CustomEvent;
-    const language = customEvent.detail?.language;
+    console.log('ZenGridToolbar: handleLanguageChange çağrıldı, olay:', event);
     
-    if (language) {
-      this.translationService.setLanguage(language);
-      this.renderDefaultContent(); // İçeriği yeniden oluştur
+    try {
+      const customEvent = event as CustomEvent;
+      const language = customEvent.detail?.language;
+      
+      console.log('ZenGridToolbar: Gelen dil değeri:', language);
+      
+      if (language) {
+        console.log('ZenGridToolbar: handleLanguageChange - Dil değişiyor:', language);
+        
+        try {
+          // Dil servisini güncelle
+          this.translationService.setLanguage(language);
+          console.log('ZenGridToolbar: Dil servisi güncellendi');
+          
+          // Sadece metinleri güncelle, tüm içeriği yeniden oluşturma
+          this.updateTranslations();
+          console.log('ZenGridToolbar: Çeviriler güncellendi');
+        } catch (err) {
+          console.error('ZenGridToolbar: Dil değişimi sırasında hata:', err);
+        }
+      } else {
+        console.warn('ZenGridToolbar: Dil değişimi olayında geçerli dil değeri bulunamadı');
+      }
+    } catch (err) {
+      console.error('ZenGridToolbar: Dil değişimi olayı işlenirken hata:', err);
     }
   }
   
@@ -212,22 +303,127 @@ export class ZenGridToolbar extends HTMLElement {
     const customEvent = event as CustomEvent;
     const options = customEvent.detail;
     
-    // Arama özelliğinin görünürlüğünü güncelle
-    const searchContainer = this.shadow.querySelector('.zen-grid-search');
-    if (searchContainer) {
-      (searchContainer as HTMLElement).style.display = options.search ? '' : 'none';
+    console.log('ZenGridToolbar: Toolbar seçenekleri değişti:', options);
+    console.log('Orijinal veri:', JSON.stringify(options));
+    console.log('Arama görünürlüğü:', options.search);
+    console.log('Dışa aktarma görünürlüğü:', options.export);
+    console.log('Dil:', options.language);
+    
+    // DOM varlığını kontrol et
+    const hasShadowRoot = !!this.shadow;
+    console.log('Shadow root var mı?', hasShadowRoot);
+    
+    // Mevcut seçenekleri sakla
+    // Boolean olarak kesin değerler almak için === kullan
+    const currentSearchState = options.search === true;
+    const currentExportState = options.export === true;
+    
+    console.log('İşlenmiş arama durumu:', currentSearchState);
+    console.log('İşlenmiş dışa aktarma durumu:', currentExportState);
+    
+    try {
+      // Arama özelliğinin görünürlüğünü güncelle
+      const searchContainer = this.shadow.querySelector('.zen-grid-search');
+      console.log('Arama konteyner elemanı bulundu:', !!searchContainer);
+      
+      if (searchContainer) {
+        // style.display'i doğrudan ayarlamak yerine öğeye veri özniteliği ekleyelim
+        if (currentSearchState) {
+          searchContainer.removeAttribute('hidden');
+          (searchContainer as HTMLElement).style.display = '';
+        } else {
+          searchContainer.setAttribute('hidden', 'true');
+          (searchContainer as HTMLElement).style.display = 'none';
+        }
+        console.log('Arama konteynerinin yeni görünürlüğü:', (searchContainer as HTMLElement).style.display);
+      }
+      
+      // Dışa aktarma butonlarının görünürlüğünü güncelle
+      const exportButtonsContainer = this.shadow.querySelector('.zen-grid-export-buttons');
+      console.log('Dışa aktarma butonu konteyner elemanı bulundu:', !!exportButtonsContainer);
+      
+      if (exportButtonsContainer) {
+        // style.display'i doğrudan ayarlamak yerine öğeye veri özniteliği ekleyelim
+        if (currentExportState) {
+          exportButtonsContainer.removeAttribute('hidden');
+          (exportButtonsContainer as HTMLElement).style.display = '';
+        } else {
+          exportButtonsContainer.setAttribute('hidden', 'true');
+          (exportButtonsContainer as HTMLElement).style.display = 'none';
+        }
+        console.log('Dışa aktarma konteynerinin yeni görünürlüğü:', (exportButtonsContainer as HTMLElement).style.display);
+      }
+      
+      // Dil değişimini kontrol et ve güncelle
+      if (options.language) {
+        console.log('ZenGridToolbar: Dil değişiyor:', options.language);
+        this.translationService.setLanguage(options.language);
+        
+        // Metinleri güncelle
+        this.updateTranslations();
+      }
+    } catch (error) {
+      console.error('ZenGridToolbar: Toolbar seçenekleri güncellenirken hata:', error);
     }
+  }
+  
+  /**
+   * Dil değiştiğinde metinleri günceller
+   */
+  private updateTranslations(): void {
+    console.log('ZenGridToolbar: updateTranslations başladı, aktif dil:', this.translationService.getLanguage());
     
-    // Dışa aktarma butonlarının görünürlüğünü güncelle
-    const exportButtons = this.shadow.querySelectorAll('.zen-grid-toolbar-button[data-action^="export"]');
-    exportButtons.forEach(button => {
-      (button as HTMLElement).style.display = options.export ? '' : 'none';
-    });
-    
-    // Dil değişimini kontrol et ve güncelle
-    if (options.language) {
-      this.translationService.setLanguage(options.language);
-      this.renderDefaultContent(); // İçeriği yeniden oluştur
+    try {
+      // Arama placeholder'ını güncelle
+      const searchInput = this.shadow.querySelector('.zen-grid-search-input') as HTMLInputElement;
+      if (searchInput) {
+        const placeholder = this.translationService.translate(TranslationKey.SEARCH_PLACEHOLDER);
+        console.log('ZenGridToolbar: Arama placeholder güncelleniyor:', placeholder);
+        searchInput.placeholder = placeholder;
+      } else {
+        console.log('ZenGridToolbar: Arama alanı bulunamadı');
+      }
+      
+      // Başlığı güncelle
+      const title = this.shadow.querySelector('.zen-grid-toolbar-title');
+      if (title) {
+        const titleText = this.translationService.translate(TranslationKey.TABLE_TITLE);
+        console.log('ZenGridToolbar: Başlık güncelleniyor:', titleText);
+        title.textContent = titleText;
+      } else {
+        console.log('ZenGridToolbar: Başlık alanı bulunamadı');
+      }
+      
+      // Buton başlıklarını güncelle
+      const buttons = this.shadow.querySelectorAll('.zen-grid-toolbar-button');
+      console.log('ZenGridToolbar: Güncellenecek buton sayısı:', buttons.length);
+      
+      buttons.forEach(button => {
+        const action = (button as HTMLElement).dataset.action;
+        if (action) {
+          let translationKey: TranslationKey | null = null;
+          
+          if (action === 'export-csv') {
+            translationKey = TranslationKey.EXPORT_CSV;
+          } else if (action === 'export-json') {
+            translationKey = TranslationKey.EXPORT_JSON;
+          } else if (action === 'export-pdf') {
+            translationKey = TranslationKey.EXPORT_PDF;
+          } else if (action === 'export-excel') {
+            translationKey = TranslationKey.EXPORT_EXCEL;
+          }
+          
+          if (translationKey) {
+            const buttonTitle = this.translationService.translate(translationKey);
+            console.log(`ZenGridToolbar: "${action}" butonu için başlık güncelleniyor:`, buttonTitle);
+            button.setAttribute('title', buttonTitle);
+          }
+        }
+      });
+      
+      console.log('ZenGridToolbar: Tüm çeviriler başarıyla güncellendi');
+    } catch (err) {
+      console.error('ZenGridToolbar: Çeviriler güncellenirken hata:', err);
     }
   }
   
@@ -238,8 +434,32 @@ export class ZenGridToolbar extends HTMLElement {
     // Önce mevcut içeriği temizle
     this.clearAll();
     
+    // Toolbar seçeneklerini ara
+    let searchVisible = true;
+    let exportVisible = true;
+    
+    // Seçenekleri al
+    const zenGrid = this.findZenGridElement();
+    if (zenGrid) {
+      try {
+        // @ts-ignore: ZenGrid.toolbarOptions özelliğine erişme
+        const options = zenGrid.toolbarOptions;
+        if (options) {
+          searchVisible = options.search !== false; // undefined ise true kabul et
+          exportVisible = options.export !== false; // undefined ise true kabul et
+          console.log('ZenGridToolbar: İçerik oluşturulurken seçenekler alındı:', { searchVisible, exportVisible });
+        }
+      } catch (err) {
+        console.warn('ZenGridToolbar: Seçenekler alınamadı', err);
+      }
+    }
+    
     // Sol bölüm - Arama kutusu
     const searchContainer = DomUtils.createElement('div', { class: 'zen-grid-search' });
+    if (!searchVisible) {
+      searchContainer.style.display = 'none';
+    }
+    
     const searchIcon = DomUtils.createElement('span', { class: 'zen-grid-search-icon' }, ['🔍']);
     const searchInput = DomUtils.createElement('input', {
       class: 'zen-grid-search-input',
@@ -248,18 +468,20 @@ export class ZenGridToolbar extends HTMLElement {
     });
     
     searchInput.addEventListener('input', (e) => {
-      if (this.gridElement) {
-        const searchTerm = (e.target as HTMLInputElement).value;
-        // Tüm alanlarda basit bir arama yapmak için
-        if (searchTerm.trim() !== '') {
-          const filters = { searchTerm };
-          // @ts-ignore: gridElement üzerindeki filter metodu
-          this.gridElement.filter(filters);
-        } else {
-          // @ts-ignore: gridElement üzerindeki filter metodu
-          this.gridElement.filter({});
-        }
+      console.log('ZenGridToolbar: Search input event tetiklendi');
+      
+      // Her zaman en güncel grid referansı ile çalış
+      if (!this.gridElement) {
+        this.gridElement = this.findZenGridElement();
+        console.log('ZenGridToolbar: Grid referansı bulundu mu:', !!this.gridElement);
       }
+      
+      // Arama metnini al ve boşlukları kırp
+      const searchTerm = (e.target as HTMLInputElement).value;
+      console.log('ZenGridToolbar: Arama terimi:', searchTerm);
+      
+      // Filtreleme işlemi
+      this.performSearch(searchTerm);
     });
     
     searchContainer.appendChild(searchIcon);
@@ -274,6 +496,9 @@ export class ZenGridToolbar extends HTMLElement {
     
     // Sağ bölüm - Dışa aktarma butonları
     const exportButtonsContainer = DomUtils.createElement('div', { class: 'zen-grid-export-buttons' });
+    if (!exportVisible) {
+      exportButtonsContainer.style.display = 'none';
+    }
     
     // CSV olarak dışa aktar
     const csvButton = DomUtils.createElement('button', { 
@@ -315,24 +540,168 @@ export class ZenGridToolbar extends HTMLElement {
   }
   
   /**
-   * En yakın ZenGrid bileşenini bulur
+   * Arama işlemini gerçekleştirir
    */
-  private findZenGridElement(): HTMLElement | null {
-    // Eğer bir sonraki kardeş eleman ZenGrid ise onu döndür
-    const nextSibling = this.nextElementSibling;
-    if (nextSibling && nextSibling.tagName.toLowerCase() === 'zen-grid') {
-      return nextSibling as HTMLElement;
+  private performSearch(searchTerm: string): void {
+    // Grid referansı yoksa bulmaya çalış
+    if (!this.gridElement) {
+      this.gridElement = this.findZenGridElement();
     }
     
-    // Eğer bir üst eleman içinde ZenGrid varsa onu döndür
-    const parent = this.parentElement;
-    if (parent) {
-      const zenGridInParent = parent.querySelector('zen-grid');
-      if (zenGridInParent) {
-        return zenGridInParent as HTMLElement;
+    if (this.gridElement) {
+      console.log('ZenGridToolbar: Grid referansı bulundu, arama yapılıyor');
+      
+      // Filtreleri oluştur
+      const filters = { searchTerm: searchTerm };
+      console.log('ZenGridToolbar: Oluşturulan filtreler:', filters);
+      
+      // 1. CustomEvent ile filtre bildirimini gönder
+      try {
+        console.log('ZenGridToolbar: FilterChange olayı gönderiliyor...');
+        const filterEvent = new CustomEvent('filterChange', {
+          detail: filters,
+          bubbles: true,  // Olayın yukarı doğru kabarcıklanmasını sağla
+          composed: true  // Shadow DOM sınırlarından geçmesini sağla
+        });
+        this.gridElement.dispatchEvent(filterEvent);
+        console.log('ZenGridToolbar: FilterChange olayı gönderildi');
+        return;
+      } catch (err) {
+        console.error('ZenGridToolbar: Olay gönderilirken hata:', err);
+      }
+      
+      // 2. Direkt metot çağrısı (1. yöntem başarısız olursa)
+      try {
+        console.log('ZenGridToolbar: Doğrudan filter metodu çağrılıyor');
+        if (typeof (this.gridElement as any).filter === 'function') {
+          (this.gridElement as any).filter(filters);
+          console.log('ZenGridToolbar: filter metodu başarıyla çağrıldı');
+          return;
+        } else {
+          console.warn('ZenGridToolbar: filter metodu bulunamadı');
+        }
+      } catch (err) {
+        console.error('ZenGridToolbar: filter metodu çağırma hatası:', err);
       }
     }
     
+    // Hiçbir yöntem çalışmazsa, document üzerinden son bir deneme yap
+    console.warn('ZenGridToolbar: Normal yöntemlerle grid bulunamadı, document üzerinden aranıyor');
+    const gridElements = document.querySelectorAll('zen-grid');
+    if (gridElements.length > 0) {
+      this.gridElement = gridElements[0] as HTMLElement;
+      console.log('ZenGridToolbar: Document üzerinde grid bulundu, tekrar deneniyor');
+      
+      try {
+        // Filtreleri oluştur
+        const filters = { searchTerm: searchTerm };
+        
+        const filterEvent = new CustomEvent('filterChange', {
+          detail: filters,
+          bubbles: true,
+          composed: true
+        });
+        gridElements[0].dispatchEvent(filterEvent);
+        console.log('ZenGridToolbar: Document üzerindeki grid ile filtreleme yapıldı');
+      } catch (err) {
+        console.error('ZenGridToolbar: Document üzerindeki grid ile filtreleme hatası:', err);
+      }
+    } else {
+      console.error('ZenGridToolbar: Hiçbir şekilde grid elementi bulunamadı');
+      
+      // Son çare: Grid bulunamadığında uyarı göster
+      alert('Grid bulunamadı, arama yapılamıyor. Sayfayı yenileyin ve tekrar deneyin.');
+    }
+  }
+  
+  /**
+   * En yakın ZenGrid bileşenini bulur
+   */
+  private findZenGridElement(): HTMLElement | null {
+    console.log('ZenGridToolbar: findZenGridElement çağrıldı');
+    
+    // Mevcut grid referansı
+    if (this.gridElement) {
+      console.log('ZenGridToolbar: Mevcut grid referansı kullanılıyor');
+      return this.gridElement;
+    }
+    
+    // 1. Önce kardeş elementleri kontrol et
+    // 1.1 Sonraki kardeş elementi kontrol et (en yaygın durum)
+    const nextSibling = this.nextElementSibling;
+    if (nextSibling && nextSibling.tagName.toLowerCase() === 'zen-grid') {
+      console.log('ZenGridToolbar: Sonraki eleman olarak zen-grid bulundu');
+      return nextSibling as HTMLElement;
+    }
+    
+    // 1.2 Önceki kardeş elementi kontrol et
+    const prevSibling = this.previousElementSibling;
+    if (prevSibling && prevSibling.tagName.toLowerCase() === 'zen-grid') {
+      console.log('ZenGridToolbar: Önceki eleman olarak zen-grid bulundu');
+      return prevSibling as HTMLElement;
+    }
+    
+    // 2. Üst eleman içindeki tüm zen-grid elementlerini bul
+    const parent = this.parentElement;
+    if (parent) {
+      const zenGridsInParent = parent.querySelectorAll('zen-grid');
+      if (zenGridsInParent.length > 0) {
+        console.log('ZenGridToolbar: Üst eleman içinde zen-grid bulundu');
+        return zenGridsInParent[0] as HTMLElement;
+      }
+    }
+    
+    // 3. shadow root ve diğer konteynerleri kontrol et
+    try {
+      // Üst containerların içinde ara
+      let currentParent = this.parentElement;
+      while (currentParent) {
+        const containers = currentParent.querySelectorAll('.container, .wrapper, main, section, div');
+        for (const container of Array.from(containers)) {
+          const grids = container.querySelectorAll('zen-grid');
+          if (grids.length > 0) {
+            console.log('ZenGridToolbar: Container içinde zen-grid bulundu');
+            return grids[0] as HTMLElement;
+          }
+        }
+        currentParent = currentParent.parentElement;
+      }
+    } catch (err) {
+      console.warn('İç içe konteyner araması sırasında hata:', err);
+    }
+    
+    // 4. Tüm dokümandaki zen-grid elementlerini ara
+    const allZenGrids = document.querySelectorAll('zen-grid');
+    if (allZenGrids.length > 0) {
+      console.log('ZenGridToolbar: Dokümanda zen-grid bulundu, ilki seçiliyor');
+      console.log('ZenGridToolbar: Bulunan grid IDs:', Array.from(allZenGrids).map(g => g.id || 'id-yok'));
+      return allZenGrids[0] as HTMLElement;
+    }
+    
+    // 5. Uzak ihtimal: Custom elementler yüklenmemiş olabilir, biraz bekleyip tekrar deneyelim
+    setTimeout(() => {
+      console.log('ZenGridToolbar: Custom elementlerin yüklenmesi için bekleniliyor...');
+      const gridsAfterTimeout = document.querySelectorAll('zen-grid');
+      if (gridsAfterTimeout.length > 0) {
+        console.log('ZenGridToolbar: Gecikmeli olarak grid bulundu');
+        this.gridElement = gridsAfterTimeout[0] as HTMLElement;
+        
+        // Grid'i bulduktan sonra event'i bağlayalım
+        if (this.gridElement) {
+          // Bağlantıyı iki yönlü yapalım
+          try {
+            if (typeof (this.gridElement as any).toolbar === 'function') {
+              (this.gridElement as any).toolbar = this;
+              console.log('ZenGridToolbar: Grid ile iki yönlü bağlantı kuruldu');
+            }
+          } catch (err) {
+            console.warn('ZenGridToolbar: Grid ile iki yönlü bağlantı kurulamadı', err);
+          }
+        }
+      }
+    }, 100);
+    
+    console.warn('ZenGridToolbar: Hiçbir zen-grid elementi bulunamadı');
     return null;
   }
   

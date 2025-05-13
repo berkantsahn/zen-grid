@@ -1,7 +1,6 @@
-import { GridOptions, Column, PaginationOptions, SortOptions, ToolbarOptions } from '../core/models';
+import { GridOptions, Column, PaginationOptions, SortOptions, ToolbarOptions } from '../core/models/';
 import { IColumn, ISortOptions, IPaginationOptions, IToolbarOptions, SortDirection } from '../core/interfaces';
 import { DomUtils, DataUtils, TranslationService, TranslationKey } from '../core/utils';
-import { ZenGridToolbar } from './zen-grid-toolbar';
 
 /**
  * ZenGrid web bileşeni
@@ -47,7 +46,6 @@ export class ZenGrid extends HTMLElement {
       bordered: true,
       responsive: true,
       showHeader: true,
-      emptyMessage: 'Görüntülenecek veri yok',
       toolbarOptions: {
         visible: true,
         search: true,
@@ -263,6 +261,34 @@ export class ZenGrid extends HTMLElement {
     // Toolbar entegrasyonu
     this.setupToolbarIntegration();
     
+    // Filtreleme olayını dinle
+    this.addEventListener('filterChange', (e: Event) => {
+      console.log('ZenGrid: filterChange olayı alındı');
+      const customEvent = e as CustomEvent;
+      const filters = customEvent.detail;
+      
+      // Debug için log ekleyelim
+      console.log('ZenGrid: Filtreleme yapılacak, filtreler:', JSON.stringify(filters));
+      
+      // Event'i durduralım ki yukarı doğru kabarcıklanmasın
+      e.stopPropagation();
+      
+      // Filtrelerin geçerli olduğundan emin olalım
+      if (filters) {
+        console.log('ZenGrid: Olay ile filtreleme yapılıyor:', filters);
+        
+        // Uygulamadan önce filtreleri kontrol edelim
+        try {
+          this.filter(filters);
+          console.log('ZenGrid: Filtreleme başarılı');
+        } catch (err) {
+          console.error('ZenGrid: Filtreleme sırasında hata:', err);
+        }
+      } else {
+        console.warn('ZenGrid: Filtreleme için geçerli değer bulunamadı');
+      }
+    });
+    
     // Eğer toolbarElement hala yoksa ve toolbarOptions varsa veya yoksa
     if (!this.toolbarElement) {
       console.log('ZenGrid: Toolbar elementi bulunamadı, yenisi oluşturuluyor');
@@ -273,7 +299,8 @@ export class ZenGrid extends HTMLElement {
         this._options.toolbarOptions = new ToolbarOptions({
           visible: true,
           search: true,
-          export: true
+          export: true,
+          language: this._options.language || 'tr'
         });
       }
       
@@ -284,7 +311,10 @@ export class ZenGrid extends HTMLElement {
     }
     
     // Toolbar'ı güncelle
-    this.updateToolbar();
+    setTimeout(() => {
+      console.log('ZenGrid: Gecikmeli olarak toolbar güncelleniyor');
+      this.updateToolbar();
+    }, 0);
     
     // Render
     this.render();
@@ -323,18 +353,30 @@ export class ZenGrid extends HTMLElement {
    * ToolbarOptions için özel setter
    */
   private setToolbarOptions(value: any): void {
+    console.log('ZenGrid: setToolbarOptions çağrıldı', value);
+    
     // String olarak alınabilir (HTML attribute olarak geldiğinde)
     if (typeof value === 'string') {
       try {
         value = JSON.parse(value);
+        console.log('ZenGrid: String toolbar options JSON olarak parse edildi:', value);
       } catch (e) {
         console.error('Geçersiz toolbar options string formatı:', e);
         return;
       }
     }
     
+    // Mevcut seçeneklerle birleştir
+    const currentOptions = this._options.toolbarOptions || {};
+    const mergedOptions = {
+      ...currentOptions,
+      ...value
+    };
+    
+    console.log('ZenGrid: Toolbar seçenekleri birleştirildi:', mergedOptions);
+    
     // Nesne olarak ayarla
-    this.toolbarOptions = value;
+    this.toolbarOptions = mergedOptions;
   }
   
   /**
@@ -432,7 +474,17 @@ export class ZenGrid extends HTMLElement {
       case 'toolbar-options':
         try {
           const parsedValue = JSON.parse(newValue);
-          this.toolbarOptions = parsedValue;
+          console.log('ZenGrid: Toolbar options parsed:', parsedValue);
+          
+          // Mevcut değerlerle birleştirerek ayarla
+          const currentOptions = this._options.toolbarOptions || {};
+          const mergedOptions = {
+            ...currentOptions,
+            ...parsedValue
+          };
+          
+          console.log('ZenGrid: Toolbar options merged:', mergedOptions);
+          this.toolbarOptions = mergedOptions;
         } catch (e) {
           console.error('Geçersiz toolbar-options formatı:', e);
         }
@@ -673,25 +725,55 @@ export class ZenGrid extends HTMLElement {
     // Toolbar'ın görünürlüğünü ayarla
     if (this.toolbarElement) {
       console.log('Toolbar element bulundu, görünürlük ayarlanıyor:', this._options.toolbarOptions.visible);
+      
+      // Görünürlük ayarı
       if (this._options.toolbarOptions.visible) {
         (this.toolbarElement as HTMLElement).style.display = '';
         
         // Toolbar özelliklerini güncelle
         if (this.toolbarElement instanceof HTMLElement) {
-          // Toolbar içeriğindeki arama ve dışa aktarma özelliklerini güncelle
-          // shadowRoot üzerinden doğrudan erişemediğimiz için custom event ile bildirelim
+          // Boolean değerler yerine sayısal değerler kullanalım (1 = true, 0 = false)
+          // Bazı web componentleri boolean parametreleri string olarak alabildiğinden
+          // bu daha güvenli bir yöntemdir
           const toolbarEvent = new CustomEvent('toolbarOptionsChange', {
             detail: {
-              search: this._options.toolbarOptions.search,
-              export: this._options.toolbarOptions.export
+              search: this._options.toolbarOptions.search ? true : false,
+              export: this._options.toolbarOptions.export ? true : false,
+              visible: this._options.toolbarOptions.visible ? true : false,
+              language: this._options.toolbarOptions.language || this._options.language || 'tr'
             }
           });
           
-          this.toolbarElement.dispatchEvent(toolbarEvent);
+          console.log('ZenGrid: Toolbar seçenekleri olayı gönderiliyor:', toolbarEvent.detail);
+          
+          try {
+            // Olayı gönder
+            this.toolbarElement.dispatchEvent(toolbarEvent);
+          } catch (error) {
+            console.error('ZenGrid: Toolbar seçenekleri olayı gönderilirken hata:', error);
+          }
+          
+          // Dil değişimini ayrıca bildir
+          if (this._options.toolbarOptions.language || this._options.language) {
+            const languageEvent = new CustomEvent('languageChange', {
+              detail: {
+                language: this._options.toolbarOptions.language || this._options.language || 'tr'
+              }
+            });
+            console.log('ZenGrid: Dil değişimi olayı gönderiliyor:', languageEvent.detail);
+            
+            try {
+              this.toolbarElement.dispatchEvent(languageEvent);
+            } catch (error) {
+              console.error('ZenGrid: Dil değişimi olayı gönderilirken hata:', error);
+            }
+          }
         }
       } else {
         (this.toolbarElement as HTMLElement).style.display = 'none';
       }
+    } else {
+      console.warn('ZenGrid: Toolbar elementi bulunamadı, güncelleme yapılamıyor');
     }
   }
   
@@ -777,7 +859,7 @@ export class ZenGrid extends HTMLElement {
       const emptyCell = DomUtils.createElement('td', {
         colspan: String(this._options.columns.length || 1),
         class: 'zen-grid-empty-message'
-      }, [this._options.emptyMessage]);
+      }, [this.getTranslation(TranslationKey.NO_DATA)]);
       
       emptyRow.appendChild(emptyCell);
       this.tableBody.appendChild(emptyRow);
@@ -1073,15 +1155,94 @@ export class ZenGrid extends HTMLElement {
    * Verileri filtreler
    */
   filter(filters: Record<string, any>): void {
-    this._filteredData = DataUtils.filter(this._options.data, filters);
+    console.log('ZenGrid: filter metodu çağrıldı, filtreler:', filters);
     
-    // Sayfalama varsa ilk sayfaya dön
-    if (this._options.paginationOptions) {
-      this._options.paginationOptions.currentPage = 1;
-      this._options.paginationOptions.totalItems = this._filteredData.length;
+    try {
+      // Önce veri var mı kontrol et
+      if (!this._options.data || !Array.isArray(this._options.data) || this._options.data.length === 0) {
+        console.warn('ZenGrid: Filtrelenecek veri yok!');
+        this._filteredData = [];
+        this.render();
+        return;
+      }
+      
+      // Başlangıç veri sayısı ve durumunu logla
+      const originalDataCount = this._options.data.length;
+      console.log('ZenGrid: Filtreleme öncesi veri sayısı:', originalDataCount);
+      console.log('ZenGrid: Veri özeti:', JSON.stringify(this._options.data.slice(0, 1)).substring(0, 100) + '...');
+      
+      // String olarak tek parametre gelirse onu searchTerm olarak işle
+      if (typeof filters === 'string') {
+        filters = { searchTerm: filters };
+      }
+      
+      // filters null veya undefined ise, boş nesne kullan
+      if (!filters) {
+        console.log('ZenGrid: Filtreler geçersiz, tüm veriyi gösteriyorum');
+        filters = {};
+      }
+      
+      // Boş arama terimi kontrolü
+      if ('searchTerm' in filters) {
+        // searchTerm string'e dönüştür ve boşlukları kırp
+        filters.searchTerm = String(filters.searchTerm || '').trim();
+        
+        if (filters.searchTerm === '') {
+          console.log('ZenGrid: Boş arama terimi, tüm veriyi göster');
+          this._filteredData = [...this._options.data];
+        } else {
+          // Sadece searchTerm filtresi varsa, özelliğini belirt
+          console.log(`ZenGrid: '${filters.searchTerm}' için tüm alanlarda arama yapılıyor...`);
+          // Filtreleme işlemi
+          this._filteredData = DataUtils.filter(this._options.data, filters);
+        }
+      } else {
+        // Diğer filtreler için
+        console.log('ZenGrid: Diğer filtreler uygulanıyor:', filters);
+        this._filteredData = DataUtils.filter(this._options.data, filters);
+      }
+      
+      // Hiçbir filtre belirtilmezse
+      if (Object.keys(filters).length === 0) {
+        console.log('ZenGrid: Filtre yok, tüm veriyi göster');
+        this._filteredData = [...this._options.data];
+      }
+      
+      // Sonuç veri sayısı
+      const filteredDataCount = this._filteredData.length;
+      console.log(`ZenGrid: Filtreleme sonucu ${originalDataCount} kayıttan ${filteredDataCount} kayıt gösteriliyor`);
+      
+      // Hiç veri bulunamadıysa spesifik olarak bildir
+      if (filteredDataCount === 0) {
+        console.warn('ZenGrid: Filtreleme sonrası hiç veri bulunamadı!');
+      }
+      
+      // Sayfalama varsa ilk sayfaya dön
+      if (this._options.paginationOptions) {
+        this._options.paginationOptions.currentPage = 1;
+        this._options.paginationOptions.totalItems = this._filteredData.length;
+      }
+      
+      // Filtreleme olayını tetikle
+      const filterEvent = new CustomEvent('filtered', {
+        detail: {
+          filters,
+          resultCount: filteredDataCount
+        }
+      });
+      this.dispatchEvent(filterEvent);
+      
+      // Veri kümesi değiştiğinde referans güncellensin
+      this._filteredData = [...this._filteredData];
+      
+      // Yeniden render et
+      this.render();
+    } catch (err) {
+      console.error('ZenGrid: Filtreleme sırasında hata oluştu:', err);
+      // Hata durumunda filtreyi temizle ve orjinal veriyi göster
+      this._filteredData = [...this._options.data];
+      this.render();
     }
-    
-    this.render();
   }
   
   /**
@@ -1145,16 +1306,51 @@ export class ZenGrid extends HTMLElement {
    * Dil setter
    */
   set language(value: string) {
+    console.log(`ZenGrid: Dil değiştiriliyor: ${this._options.language} -> ${value}`);
+    
+    // Değer kontrolü
+    if (!value) {
+      console.warn('ZenGrid: Geçersiz dil değeri, varsayılan "tr" kullanılacak');
+      value = 'tr';
+    }
+    
     this._options.language = value;
     
     // Dil servisine dil ayarını bildir
-    this.translationService.setLanguage(value);
+    try {
+      console.log('ZenGrid: TranslationService.setLanguage çağrılıyor:', value);
+      this.translationService.setLanguage(value);
+    } catch (err) {
+      console.error('ZenGrid: Dil servisi ayarlanırken hata:', err);
+    }
     
     // Toolbar'ın dilini güncelle
     if (this.toolbarElement && this._options.toolbarOptions) {
+      console.log('ZenGrid: Toolbar dil ayarı güncelleniyor');
       this._options.toolbarOptions.language = value;
-      this.updateToolbar();
+      
+      // Toolbar'a dil değişimi olayını gönder
+      try {
+        console.log('ZenGrid: Toolbar\'a languageChange olayı gönderiliyor');
+        const languageEvent = new CustomEvent('languageChange', {
+          detail: {
+            language: value
+          },
+          bubbles: true,  // Olayın yukarı doğru kabarcıklanmasını sağla
+          composed: true  // Shadow DOM sınırlarından geçmesini sağla
+        });
+        
+        this.toolbarElement.dispatchEvent(languageEvent);
+        console.log('ZenGrid: Dil değişimi olayı başarıyla gönderildi');
+      } catch (err) {
+        console.error('ZenGrid: Dil değişimi olayı gönderilirken hata:', err);
+      }
+    } else {
+      console.warn('ZenGrid: Toolbar bulunamadı, dil değişimi iletilemedi');
     }
+    
+    // Tabloyu yeniden oluştur (çevirilerin güncellenmesi için)
+    this.render();
   }
   
   /**

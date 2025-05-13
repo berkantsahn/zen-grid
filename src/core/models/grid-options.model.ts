@@ -44,9 +44,6 @@ export class GridOptions implements IGridOptions {
   /** Tablo başlığı etkin mi */
   showHeader: boolean = true;
   
-  /** Boş veri mesajı */
-  emptyMessage: string = 'Görüntülenecek veri yok';
-  
   /** Tablo CSS sınıfı */
   cssClass?: string;
   
@@ -80,7 +77,6 @@ export class GridOptions implements IGridOptions {
     if (options.bordered !== undefined) this.bordered = options.bordered;
     if (options.responsive !== undefined) this.responsive = options.responsive;
     if (options.showHeader !== undefined) this.showHeader = options.showHeader;
-    if (options.emptyMessage !== undefined) this.emptyMessage = options.emptyMessage;
     if (options.cssClass !== undefined) this.cssClass = options.cssClass;
     
     // Callback'leri ayarla
