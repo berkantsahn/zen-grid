@@ -2,7 +2,9 @@
 
 Modern ve esnek veri tablosu komponenti. Angular, React ve Vue ile sorunsuz çalışır.
 
-## Özellikler
+*A modern and flexible data table component. Works seamlessly with Angular, React, and Vue.*
+
+## Özellikler | Features
 
 - Web Component olarak tüm JavaScript framework'lerinde kullanılabilir
 - Sıralama, filtreleme ve sayfalama özellikleri
@@ -10,15 +12,21 @@ Modern ve esnek veri tablosu komponenti. Angular, React ve Vue ile sorunsuz çal
 - Duyarlı tasarım
 - TypeScript desteği
 
-## Kurulum
+*- Can be used in all JavaScript frameworks as a Web Component*
+*- Sorting, filtering, and pagination features*
+*- Customizable cells and columns*
+*- Responsive design*
+*- TypeScript support*
+
+## Kurulum | Installation
 
 ```bash
 npm install zen-grid
-# veya
+# veya | or
 yarn add zen-grid
 ```
 
-## Kullanım
+## Kullanım | Usage
 
 ### HTML
 
@@ -28,7 +36,7 @@ yarn add zen-grid
 <script>
   const table = document.getElementById('my-table');
   table.data = [
-    { id: 1, name: 'Ahmet', age: 25 },
+    { id: 1, name: 'Berkant', age: 27 },
     { id: 2, name: 'Mehmet', age: 30 },
     { id: 3, name: 'Ayşe', age: 28 }
   ];
@@ -58,19 +66,19 @@ yarn add zen-grid
 <zen-grid :data="users" :columns="columns"></zen-grid>
 ```
 
-## Geliştirme
+## Geliştirme | Development
 
 ```bash
-# Bağımlılıkları yükle
+# Bağımlılıkları yükle | Install dependencies
 npm install
 
-# Geliştirme sunucusunu başlat
+# Geliştirme sunucusunu başlat | Start development server
 npm run dev
 
-# Dağıtım için derle
+# Dağıtım için derle | Build for production
 npm run build
 ```
 
-## Lisans
+## Lisans | License
 
 MIT 
